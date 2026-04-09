@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background: brand green rounded square -->
+  <rect width="32" height="32" rx="7" fill="#166534"/>
+  <!-- Stem -->
+  <rect x="14.5" y="13" width="3" height="14" rx="1.5" fill="white"/>
+  <!-- Left leaf: ellipse rotated -38° around its centre -->
+  <ellipse cx="13.5" cy="17.5" rx="7.5" ry="4" fill="white" transform="rotate(-38 13.5 17.5)"/>
+  <!-- Right leaf: ellipse rotated +38° around its centre, shifted up-right -->
+  <ellipse cx="18.5" cy="12.5" rx="7.5" ry="4" fill="white" transform="rotate(38 18.5 12.5)"/>
+</svg>

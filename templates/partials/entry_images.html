@@ -1,0 +1,11 @@
+{{range .Images}}
+<div class="entry-image-item" id="eimg-{{.ID}}">
+  <img src="/uploads/{{.ImagePath}}" alt="{{.Caption}}">
+  {{if .Caption}}<p class="entry-caption">{{.Caption}}</p>{{end}}
+  <button class="entry-img-del btn-icon btn-danger"
+    hx-delete="/entry-images/{{.ID}}"
+    hx-target="#entry-imgs-{{$.EntryID}}"
+    hx-swap="innerHTML"
+    title="Remove photo">&#x2715;</button>
+</div>
+{{end}}

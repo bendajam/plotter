@@ -1,0 +1,38 @@
+{{if .Records}}
+<table class="weather-table">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Rain (mm)</th>
+      <th>High °C</th>
+      <th>Low °C</th>
+      <th>Wind (km/h)</th>
+      <th>Dir</th>
+      <th>Notes</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Records}}
+    <tr id="weather-{{.ID}}">
+      <td>{{.Date}}</td>
+      <td>{{if .RainfallMM}}{{derefF .RainfallMM}}{{else}}—{{end}}</td>
+      <td>{{if .TempHighC}}{{derefF .TempHighC}}{{else}}—{{end}}</td>
+      <td>{{if .TempLowC}}{{derefF .TempLowC}}{{else}}—{{end}}</td>
+      <td>{{if .WindSpeedKMH}}{{derefF .WindSpeedKMH}}{{else}}—{{end}}</td>
+      <td>{{if .WindDir}}{{.WindDir}}{{else}}—{{end}}</td>
+      <td>{{.Notes}}</td>
+      <td>
+        <button class="btn-icon btn-danger"
+          hx-delete="/weather/{{.ID}}"
+          hx-confirm="Delete this record?"
+          hx-target="#weather-{{.ID}}"
+          hx-swap="outerHTML">&#x2715;</button>
+      </td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="hint">No weather records yet.</p>
+{{end}}

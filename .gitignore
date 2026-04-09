@@ -1,0 +1,18 @@
+# Binary
+plotter
+
+# Database
+plotter.db
+
+# Uploads (user data)
+uploads/
+
+# Go build cache
+*.test
+
+# macOS
+.DS_Store
+
+# Air (live reload)
+tmp/
+.air.toml

@@ -1,0 +1,12 @@
+<div class="marker-item" id="marker-{{.ID}}" data-marker-id="{{.ID}}">
+  <span class="marker-shape shape-{{.Shape}}">{{.Shape}}</span>
+  <span class="marker-label">{{if .Label}}{{.Label}}{{else}}<em>unlabeled</em>{{end}}</span>
+  <button class="btn-icon"
+    hx-get="/markers/{{.ID}}"
+    hx-target="#marker-detail-panel"
+    hx-swap="innerHTML">&#9432;</button>
+  <button class="btn-icon btn-danger"
+    hx-delete="/markers/{{.ID}}"
+    hx-confirm="Delete this marker?"
+    hx-on::after-request="removeMarker({{.ID}})">&#x2715;</button>
+</div>

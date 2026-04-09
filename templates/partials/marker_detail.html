@@ -1,0 +1,145 @@
+{{$marker := .Marker}}
+<div class="marker-detail">
+  <div class="marker-detail-header">
+    <h3>{{if $marker.Label}}{{$marker.Label}}{{else}}<em>Unlabeled</em>{{end}}</h3>
+    <span class="marker-shape shape-{{$marker.Shape}}">{{$marker.Shape}}</span>
+  </div>
+  {{if $marker.CategoryName}}<div class="marker-meta-row">
+    <span class="cat-dot" style="background:{{$marker.CategoryColor}}"></span>
+    {{$marker.CategoryName}}
+    {{if eq $marker.CategoryType "plant"}}<span class="type-badge type-plant">Plant</span>{{end}}
+  </div>{{end}}
+  {{if $marker.LayerName}}<div class="marker-meta-row"><span class="cat-dot" style="background:{{$marker.LayerColor}}"></span> {{$marker.LayerName}}</div>{{end}}
+  {{if $marker.PlantedDate}}<div class="marker-meta-row">Planted: {{$marker.PlantedDate}}</div>{{end}}
+  {{if $marker.EndDate}}<div class="marker-meta-row" style="color:#dc2626">Expires: {{$marker.EndDate}}</div>{{end}}
+  {{if .Group}}<div class="marker-meta-row group-meta-row">
+    <span class="group-badge">Group:</span>
+    <strong>{{.Group.Name}}</strong>
+    <button class="btn btn-sm btn-secondary" style="margin-left:auto"
+      hx-get="/plant-groups/{{.Group.ID}}"
+      hx-target="#marker-detail-panel"
+      hx-swap="innerHTML">View Group</button>
+  </div>{{end}}
+
+  <details class="marker-edit-details">
+    <summary class="marker-edit-summary">Edit marker</summary>
+    <form hx-put="/markers/{{$marker.ID}}"
+          hx-target="#marker-detail-panel"
+          hx-swap="innerHTML"
+          class="marker-edit-form">
+      <div class="form-group">
+        <label>Label</label>
+        <input type="text" name="label" value="{{$marker.Label}}" placeholder="Unlabeled">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select name="category_id">
+          <option value="">— none —</option>
+          {{range .Categories}}
+          <option value="{{.ID}}"{{if and $marker.CategoryID (eq (deref64 $marker.CategoryID) .ID)}} selected{{end}}>
+            {{.Name}}{{if eq .Type "plant"}} 🌱{{end}}
+          </option>
+          {{end}}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Layer</label>
+        <select name="layer_id">
+          <option value="">— none —</option>
+          {{range .Layers}}
+          <option value="{{.ID}}"{{if and $marker.LayerID (eq (deref64 $marker.LayerID) .ID)}} selected{{end}}>
+            {{.Name}}
+          </option>
+          {{end}}
+        </select>
+      </div>
+      {{if eq $marker.CategoryType "plant"}}
+      <div class="form-group">
+        <label>Date Planted</label>
+        <input type="date" name="planted_date" value="{{$marker.PlantedDate}}">
+      </div>
+      {{end}}
+      <div class="form-group">
+        <label>End Date</label>
+        <input type="date" name="end_date" value="{{$marker.EndDate}}">
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-sm btn-primary">Save</button>
+      </div>
+    </form>
+  </details>
+
+  <a href="/markers/{{$marker.ID}}" class="btn btn-sm btn-secondary" style="margin:8px 0;display:inline-block">Full Detail →</a>
+
+  {{if eq $marker.CategoryType "plant"}}
+  <div class="detail-section">
+    <h4>Plant Identity</h4>
+    {{template "taxonomy.html" (dict "Taxonomy" .Taxonomy "MarkerID" $marker.ID)}}
+  </div>
+
+  <div class="detail-section">
+    <h4>Harvest Log</h4>
+    {{template "harvest_list.html" (dict "Harvests" .Harvests "MarkerID" $marker.ID)}}
+    <form hx-post="/markers/{{$marker.ID}}/harvests"
+          hx-target="#harvest-list-{{$marker.ID}}"
+          hx-swap="outerHTML"
+          class="harvest-form">
+      <div class="harvest-form-row">
+        <input type="date" name="date" value="{{.Today}}" required>
+        <input type="number" name="weight_grams" placeholder="Weight (g)" min="0.1" step="0.1" required>
+      </div>
+      <input type="text" name="notes" placeholder="Notes (optional)" class="harvest-notes-input">
+      <button type="submit" class="btn btn-sm btn-primary">+ Log Harvest</button>
+    </form>
+  </div>
+  {{end}}
+
+  <div class="detail-section">
+    <h4>Notes</h4>
+    <div id="detail-entries-{{$marker.ID}}">
+      {{range .Entries}}
+      <div class="entry-card" id="entry-{{.ID}}">
+        <strong class="entry-date">{{.Date}}</strong>
+        {{if .Notes}}<p class="entry-notes">{{.Notes}}</p>{{end}}
+        <div class="entry-images" id="entry-imgs-{{.ID}}">
+          {{range .Images}}
+          <div class="entry-image-item" id="eimg-{{.ID}}">
+            <img src="/uploads/{{.ImagePath}}" alt="{{.Caption}}">
+            {{if .Caption}}<p class="entry-caption">{{.Caption}}</p>{{end}}
+            <button class="entry-img-del btn-icon btn-danger"
+              hx-delete="/entry-images/{{.ID}}"
+              hx-target="#entry-imgs-{{.EntryID}}"
+              hx-swap="innerHTML"
+              title="Remove">&#x2715;</button>
+          </div>
+          {{end}}
+        </div>
+        <form class="entry-photo-form"
+              hx-post="/entries/{{.ID}}/images"
+              hx-target="#entry-imgs-{{.ID}}"
+              hx-swap="innerHTML"
+              hx-encoding="multipart/form-data">
+          <input type="file" name="images" accept="image/*" multiple>
+          <input type="text" name="caption" placeholder="Caption">
+          <button type="submit" class="btn btn-sm btn-secondary">+ Photos</button>
+        </form>
+      </div>
+      {{else}}
+      <p class="hint">No notes yet.</p>
+      {{end}}
+    </div>
+
+    <form hx-post="/markers/{{$marker.ID}}/entries"
+          hx-target="#detail-entries-{{$marker.ID}}"
+          hx-swap="innerHTML"
+          class="entry-form">
+      <div class="form-group">
+        <input type="date" name="date" value="{{.Today}}" required>
+      </div>
+      <div class="form-group">
+        <textarea name="notes" placeholder="Notes..." rows="2"></textarea>
+      </div>
+      <button type="submit" class="btn btn-sm btn-primary">Add Note</button>
+    </form>
+  </div>
+</div>

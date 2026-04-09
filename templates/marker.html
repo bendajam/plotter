@@ -1,0 +1,159 @@
+{{template "layout.html" .}}
+{{define "content"}}
+{{$marker := .Marker}}
+<div class="form-page">
+  <div class="page-header">
+    <h1>{{if $marker.Label}}{{$marker.Label}}{{else}}Unlabeled Marker{{end}}</h1>
+    <a href="/plots/{{$marker.PlotID}}" class="btn btn-secondary">← Back to Plot</a>
+  </div>
+
+  <div class="marker-meta">
+    <span class="marker-shape shape-{{$marker.Shape}}">{{$marker.Shape}}</span>
+    {{if $marker.CategoryName}}
+      <span class="cat-dot" style="background:{{$marker.CategoryColor}}"></span>
+      <span>{{$marker.CategoryName}}</span>
+      {{if eq $marker.CategoryType "plant"}}<span class="type-badge type-plant">Plant</span>{{end}}
+    {{end}}
+    {{if $marker.LayerName}}<span class="cat-dot" style="background:{{$marker.LayerColor}}"></span><span>{{$marker.LayerName}}</span>{{end}}
+    {{if $marker.PlantedDate}}<span>Planted: {{$marker.PlantedDate}}</span>{{end}}
+    {{if $marker.EndDate}}<span style="color:#dc2626">Expires: {{$marker.EndDate}}</span>{{end}}
+  </div>
+
+  <section class="section">
+    <h2>Details</h2>
+    <form hx-put="/markers/{{$marker.ID}}"
+          class="marker-edit-form">
+      <input type="hidden" name="context" value="full-page">
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label>Label</label>
+          <input type="text" name="label" value="{{$marker.Label}}" placeholder="Unlabeled">
+        </div>
+        {{if eq $marker.CategoryType "plant"}}
+        <div class="form-group" style="flex:1">
+          <label>Date Planted</label>
+          <input type="date" name="planted_date" value="{{$marker.PlantedDate}}">
+        </div>
+        {{end}}
+        <div class="form-group" style="flex:1">
+          <label>End Date</label>
+          <input type="date" name="end_date" value="{{$marker.EndDate}}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>Category</label>
+          <select name="category_id">
+            <option value="">— none —</option>
+            {{range .Categories}}
+            <option value="{{.ID}}"{{if and $marker.CategoryID (eq (deref64 $marker.CategoryID) .ID)}} selected{{end}}>
+              {{.Name}}{{if eq .Type "plant"}} 🌱{{end}}
+            </option>
+            {{end}}
+          </select>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Layer</label>
+          <select name="layer_id">
+            <option value="">— none —</option>
+            {{range .Layers}}
+            <option value="{{.ID}}"{{if and $marker.LayerID (eq (deref64 $marker.LayerID) .ID)}} selected{{end}}>
+              {{.Name}}
+            </option>
+            {{end}}
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </form>
+  </section>
+
+  {{if eq $marker.CategoryType "plant"}}
+  <section class="section">
+    <h2>Plant Identity</h2>
+    {{template "taxonomy.html" (dict "Taxonomy" .Taxonomy "MarkerID" $marker.ID)}}
+  </section>
+
+  <section class="section">
+    <h2>Harvest Log</h2>
+    {{template "harvest_list.html" (dict "Harvests" .Harvests "MarkerID" $marker.ID)}}
+    <form hx-post="/markers/{{$marker.ID}}/harvests"
+          hx-target="#harvest-list-{{$marker.ID}}"
+          hx-swap="outerHTML"
+          class="harvest-form"
+          style="margin-top:14px">
+      <div class="harvest-form-row">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" name="date" value="{{.Today}}" required>
+        </div>
+        <div class="form-group">
+          <label>Weight (grams)</label>
+          <input type="number" name="weight_grams" placeholder="e.g. 250" min="0.1" step="0.1" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" name="notes" placeholder="Optional notes about this harvest">
+      </div>
+      <button type="submit" class="btn btn-primary">+ Log Harvest</button>
+    </form>
+  </section>
+  {{end}}
+
+  <section class="section">
+    <h2>Notes</h2>
+    <div id="entries-list">
+      {{range .Entries}}
+      <div class="entry-card" id="entry-{{.ID}}">
+        <div class="entry-header">
+          <strong class="entry-date">{{.Date}}</strong>
+        </div>
+        {{if .Notes}}<p class="entry-notes">{{.Notes}}</p>{{end}}
+
+        <div class="entry-images" id="entry-imgs-{{.ID}}">
+          {{range .Images}}
+          <div class="entry-image-item" id="eimg-{{.ID}}">
+            <img src="/uploads/{{.ImagePath}}" alt="{{.Caption}}">
+            {{if .Caption}}<p class="entry-caption">{{.Caption}}</p>{{end}}
+            <button class="entry-img-del btn-icon btn-danger"
+              hx-delete="/entry-images/{{.ID}}"
+              hx-target="#entry-imgs-{{.EntryID}}"
+              hx-swap="innerHTML"
+              title="Remove photo">&#x2715;</button>
+          </div>
+          {{end}}
+        </div>
+
+        <form class="entry-photo-form"
+              hx-post="/entries/{{.ID}}/images"
+              hx-target="#entry-imgs-{{.ID}}"
+              hx-swap="innerHTML"
+              hx-encoding="multipart/form-data">
+          <input type="file" name="images" accept="image/*" multiple>
+          <input type="text" name="caption" placeholder="Caption (optional)">
+          <button type="submit" class="btn btn-sm btn-secondary">+ Add Photos</button>
+        </form>
+      </div>
+      {{else}}
+      <p class="hint">No notes yet.</p>
+      {{end}}
+    </div>
+
+    <form hx-post="/markers/{{$marker.ID}}/entries"
+          hx-target="#entries-list"
+          hx-swap="innerHTML"
+          class="entry-form">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" name="date" value="{{.Today}}" required>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" placeholder="What happened here today?" rows="4"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Add Note</button>
+    </form>
+  </section>
+</div>
+{{end}}

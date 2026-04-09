@@ -1,0 +1,19 @@
+{{range .}}
+<div class="cat-row" id="layer-row-{{.ID}}">
+  <form class="cat-edit-form"
+        hx-put="/layers/{{.ID}}"
+        hx-target="#layer-manager-list"
+        hx-swap="innerHTML">
+    <input type="color" name="color" value="{{.Color}}" title="Layer color">
+    <input type="text"  name="name"  value="{{.Name}}" required>
+    <button type="submit" class="btn-icon" title="Save">&#10003;</button>
+  </form>
+  <button class="btn-icon btn-danger"
+    hx-delete="/layers/{{.ID}}"
+    hx-confirm="Delete '{{.Name}}'? Markers on this layer become unassigned."
+    hx-target="#layer-manager-list"
+    hx-swap="innerHTML">&#x2715;</button>
+</div>
+{{else}}
+<p class="hint">No layers yet.</p>
+{{end}}

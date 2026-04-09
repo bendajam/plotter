@@ -1,0 +1,34 @@
+{{range .Entries}}
+<div class="entry-card" id="entry-{{.ID}}">
+  <div class="entry-header">
+    <strong class="entry-date">{{.Date}}</strong>
+  </div>
+  {{if .Notes}}<p class="entry-notes">{{.Notes}}</p>{{end}}
+
+  <div class="entry-images" id="entry-imgs-{{.ID}}">
+    {{range .Images}}
+    <div class="entry-image-item" id="eimg-{{.ID}}">
+      <img src="/uploads/{{.ImagePath}}" alt="{{.Caption}}">
+      {{if .Caption}}<p class="entry-caption">{{.Caption}}</p>{{end}}
+      <button class="entry-img-del btn-icon btn-danger"
+        hx-delete="/entry-images/{{.ID}}"
+        hx-target="#entry-imgs-{{.EntryID}}"
+        hx-swap="innerHTML"
+        title="Remove photo">&#x2715;</button>
+    </div>
+    {{end}}
+  </div>
+
+  <form class="entry-photo-form"
+        hx-post="/entries/{{.ID}}/images"
+        hx-target="#entry-imgs-{{.ID}}"
+        hx-swap="innerHTML"
+        hx-encoding="multipart/form-data">
+    <input type="file" name="images" accept="image/*" multiple>
+    <input type="text" name="caption" placeholder="Caption (optional)">
+    <button type="submit" class="btn btn-sm btn-secondary">+ Photos</button>
+  </form>
+</div>
+{{else}}
+<p class="hint">No notes yet.</p>
+{{end}}

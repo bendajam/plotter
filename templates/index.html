@@ -1,0 +1,30 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<div class="page-header">
+  <h1>My Garden Plots</h1>
+  <a href="/plots/new" class="btn btn-primary">+ New Plot</a>
+</div>
+
+{{if .Plots}}
+<div class="plots-grid">
+  {{range .Plots}}
+  <div class="plot-card">
+    <a href="/plots/{{.ID}}">
+      <div class="plot-thumb">
+        <img src="/uploads/{{.ImagePath}}" alt="{{.Name}}">
+      </div>
+      <div class="plot-info">
+        <h3>{{.Name}}</h3>
+        <p class="address">{{.Address}}</p>
+        <p class="date">Added {{.CreatedAt.Format "Jan 2, 2006"}}</p>
+      </div>
+    </a>
+  </div>
+  {{end}}
+</div>
+{{else}}
+<div class="empty-state">
+  <p>No plots yet. <a href="/plots/new">Upload your first garden map.</a></p>
+</div>
+{{end}}
+{{end}}

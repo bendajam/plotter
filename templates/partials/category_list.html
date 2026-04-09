@@ -1,0 +1,23 @@
+{{range .}}
+<div class="cat-row" id="cat-row-{{.ID}}">
+  <form class="cat-edit-form"
+        hx-put="/categories/{{.ID}}"
+        hx-target="#cat-manager-list"
+        hx-swap="innerHTML">
+    <input type="color" name="color" value="{{.Color}}" title="Category color">
+    <input type="text" name="name" value="{{.Name}}" required>
+    <select name="type" class="cat-type-select" title="Category type">
+      <option value="other"{{if ne .Type "plant"}} selected{{end}}>Other</option>
+      <option value="plant"{{if eq .Type "plant"}} selected{{end}}>Plant</option>
+    </select>
+    <button type="submit" class="btn-icon" title="Save">&#10003;</button>
+  </form>
+  <button class="btn-icon btn-danger"
+    hx-delete="/categories/{{.ID}}"
+    hx-confirm="Delete '{{.Name}}'? Markers will become uncategorized."
+    hx-target="#cat-manager-list"
+    hx-swap="innerHTML">&#x2715;</button>
+</div>
+{{else}}
+<p class="hint">No categories yet.</p>
+{{end}}

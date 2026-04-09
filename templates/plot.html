@@ -1,0 +1,484 @@
+{{template "layout.html" .}}
+{{define "content"}}
+{{$plot := .Plot}}
+<div class="plot-view">
+  <div class="plot-header">
+    <div>
+      <h1>{{$plot.Name}}</h1>
+      <p class="address">{{$plot.Address}}</p>
+    </div>
+    <div class="plot-actions">
+      <a href="/plots/{{$plot.ID}}/weather" class="btn btn-secondary">Weather Log</a>
+      <button hx-delete="/plots/{{$plot.ID}}" hx-confirm="Delete this plot and all its data?"
+        class="btn btn-danger">Delete Plot</button>
+    </div>
+  </div>
+
+  <div class="workspace">
+    <!-- Canvas panel -->
+    <div class="canvas-panel">
+      <!-- Draw tools -->
+      <div class="tool-bar">
+        <span class="tool-label">Draw:</span>
+        <button class="tool-btn" data-tool="point" onclick="setTool(this,'point')" title="Point">
+          <img src="/static/icons/point.svg" class="tool-icon" alt="Point"><span class="tool-btn-label"></span>
+        </button>
+        <button class="tool-btn" data-tool="circle" onclick="setTool(this,'circle')" title="Circle">
+          <img src="/static/icons/circle.svg" class="tool-icon" alt="Circle"><span class="tool-btn-label"></span>
+        </button>
+        <button class="tool-btn" data-tool="line" onclick="setTool(this,'line')" title="Line">
+          <img src="/static/icons/line.svg" class="tool-icon" alt="Line"><span class="tool-btn-label"></span>
+        </button>
+        <button class="tool-btn" data-tool="rect" onclick="setTool(this,'rect')" title="Rectangle">
+          <img src="/static/icons/rect.svg" class="tool-icon" alt="Rectangle"><span class="tool-btn-label"></span>
+        </button>
+        <button class="tool-btn" data-tool="path" onclick="setTool(this,'path')" title="Path (multi-segment line)">
+          <img src="/static/icons/path.svg" class="tool-icon" alt="Path"><span class="tool-btn-label"></span>
+        </button>
+        <button class="tool-btn active" data-tool="select" onclick="setTool(this,'select')" title="Select marker">
+          <img src="/static/icons/select.svg" class="tool-icon" alt="Select"><span class="tool-btn-label"></span>
+        </button>
+        <button id="finish-path-btn" class="tool-btn" style="display:none;background:#166534;color:#fff"
+          onclick="plotCanvas.finishPath()" title="Finish path (Enter)">✓ Done</button>
+        <span class="tool-sep"></span>
+        <span class="tool-label">Zoom:</span>
+        <button class="tool-btn zoom-btn" onclick="plotCanvas.zoomBy(1.4,null)" title="Zoom in">
+          <img src="/static/icons/zoom-in.svg" class="tool-icon" alt="+">
+        </button>
+        <button class="tool-btn zoom-btn" onclick="plotCanvas.zoomBy(1/1.4,null)" title="Zoom out">
+          <img src="/static/icons/zoom-out.svg" class="tool-icon" alt="−">
+        </button>
+        <button class="tool-btn zoom-btn" id="zoom-level" onclick="plotCanvas.resetZoom()"
+          title="Reset zoom">100%</button>
+      </div>
+
+      <!-- Panel dropdowns bar -->
+      <div class="panel-bar">
+
+        <!-- Markers dropdown -->
+        <div class="panel-dropdown" id="dd-markers">
+          <button class="panel-btn" onclick="toggleDropdown('dd-markers')">
+            Markers <span id="marker-count">({{len .Markers}})</span> <span class="dd-arrow">▾</span>
+          </button>
+          <div class="dropdown-panel markers-dd-panel">
+            <div id="marker-list">
+              {{range .Markers}}
+              <div class="marker-item" id="marker-{{.ID}}" data-marker-id="{{.ID}}">
+                <span class="cat-dot"
+                  style="background:{{if .CategoryColor}}{{.CategoryColor}}{{else}}#64748b{{end}}"></span>
+                <span class="marker-shape shape-{{.Shape}}">{{.Shape}}</span>
+                <span class="marker-label">{{if .Label}}{{.Label}}{{else}}<em>unlabeled</em>{{end}}</span>
+                {{if .EndDate}}<span class="marker-expiry">⏱ {{.EndDate}}</span>{{end}}
+                <button class="btn-icon" hx-get="/markers/{{.ID}}" hx-target="#marker-detail-panel"
+                  hx-swap="innerHTML" onclick="closeDropdowns()">&#9432;</button>
+                <button class="btn-icon btn-danger" hx-delete="/markers/{{.ID}}" hx-confirm="Delete this marker?"
+                  hx-on::after-request="removeMarker({{.ID}})">&#x2715;</button>
+              </div>
+              {{end}}
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters dropdown -->
+        <div class="panel-dropdown" id="dd-filters">
+          <button class="panel-btn" onclick="toggleDropdown('dd-filters')">
+            Filters <span class="dd-arrow">▾</span>
+          </button>
+          <div class="dropdown-panel filters-dd-panel">
+            <h4 class="dd-section-label">Category</h4>
+            <div id="category-filters" class="filter-list">
+              <label class="filter-item">
+                <input type="checkbox" checked onchange="updateCatFilter()" data-cat-id="0">
+                <span class="cat-dot" style="background:#64748b"></span>
+                <span>Uncategorized</span>
+              </label>
+              {{range .Categories}}
+              <label class="filter-item">
+                <input type="checkbox" checked onchange="updateCatFilter()" data-cat-id="{{.ID}}">
+                <span class="cat-dot" style="background:{{.Color}}"></span>
+                <span>{{.Name}}</span>
+              </label>
+              {{end}}
+            </div>
+            <div class="dd-toggle-row">
+              <button class="btn btn-sm btn-secondary"
+                onclick="toggleAll('category-filters','data-cat-id',true)">All</button>
+              <button class="btn btn-sm btn-secondary"
+                onclick="toggleAll('category-filters','data-cat-id',false)">None</button>
+            </div>
+
+            <h4 class="dd-section-label" style="margin-top:14px">Layer</h4>
+            <div id="layer-filters" class="filter-list">
+              <label class="filter-item">
+                <input type="checkbox" checked onchange="updateLayerFilter()" data-layer-id="0">
+                <span class="cat-dot" style="background:#64748b"></span>
+                <span>No layer</span>
+              </label>
+              {{range .Layers}}
+              <label class="filter-item">
+                <input type="checkbox" checked onchange="updateLayerFilter()" data-layer-id="{{.ID}}">
+                <span class="cat-dot" style="background:{{.Color}}"></span>
+                <span>{{.Name}}</span>
+              </label>
+              {{end}}
+            </div>
+            <div class="dd-toggle-row">
+              <button class="btn btn-sm btn-secondary"
+                onclick="toggleAll('layer-filters','data-layer-id',true)">All</button>
+              <button class="btn btn-sm btn-secondary"
+                onclick="toggleAll('layer-filters','data-layer-id',false)">None</button>
+            </div>
+            <label class="filter-item" style="margin-top:10px">
+              <input type="checkbox" id="show-expired" onchange="updateExpiredFilter()">
+              <span>Show expired markers</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Categories dropdown -->
+        <div class="panel-dropdown" id="dd-categories">
+          <button class="panel-btn" onclick="toggleDropdown('dd-categories')">
+            Categories <span class="dd-arrow">▾</span>
+          </button>
+          <div class="dropdown-panel">
+            <div id="cat-manager-list">
+              {{range .Categories}}
+              <div class="cat-row">
+                <form class="cat-edit-form" hx-put="/categories/{{.ID}}" hx-target="#cat-manager-list" hx-swap="innerHTML">
+                  <input type="color" name="color" value="{{.Color}}">
+                  <input type="text" name="name" value="{{.Name}}" required>
+                  <button type="submit" class="btn-icon">&#10003;</button>
+                </form>
+                <button class="btn-icon btn-danger" hx-delete="/categories/{{.ID}}" hx-confirm="Delete '{{.Name}}'?"
+                  hx-target="#cat-manager-list" hx-swap="innerHTML">&#x2715;</button>
+              </div>
+              {{end}}
+            </div>
+            <form hx-post="/categories" hx-target="#cat-manager-list" hx-swap="innerHTML" class="cat-add-form">
+              <input type="color" name="color" value="#166534">
+              <input type="text" name="name" placeholder="New category…" required>
+              <select name="type" class="cat-type-select">
+                <option value="other">Other</option>
+                <option value="plant">Plant</option>
+              </select>
+              <button type="submit" class="btn btn-sm btn-primary">Add</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Layers dropdown -->
+        <div class="panel-dropdown" id="dd-layers">
+          <button class="panel-btn" onclick="toggleDropdown('dd-layers')">
+            Layers <span class="dd-arrow">▾</span>
+          </button>
+          <div class="dropdown-panel">
+            <div id="layer-manager-list">
+              {{range .Layers}}
+              <div class="cat-row">
+                <form class="cat-edit-form" hx-put="/layers/{{.ID}}" hx-target="#layer-manager-list" hx-swap="innerHTML">
+                  <input type="color" name="color" value="{{.Color}}">
+                  <input type="text" name="name" value="{{.Name}}" required>
+                  <button type="submit" class="btn-icon">&#10003;</button>
+                </form>
+                <button class="btn-icon btn-danger" hx-delete="/layers/{{.ID}}" hx-confirm="Delete '{{.Name}}'?"
+                  hx-target="#layer-manager-list" hx-swap="innerHTML">&#x2715;</button>
+              </div>
+              {{end}}
+            </div>
+            <form hx-post="/layers" hx-target="#layer-manager-list" hx-swap="innerHTML" class="cat-add-form">
+              <input type="color" name="color" value="#0ea5e9">
+              <input type="text" name="name" placeholder="New layer…" required>
+              <button type="submit" class="btn btn-sm btn-primary">Add</button>
+            </form>
+          </div>
+        </div>
+
+      </div><!-- /panel-bar -->
+
+      <div class="canvas-container">
+        <canvas id="plot-canvas"></canvas>
+      </div>
+      <p class="canvas-hint">Scroll to zoom · Ctrl+drag to pan · Select: click marker · Shift+click to multi-select &amp; create groups · Path: click points, Enter/✓ to finish, Esc to cancel</p>
+    </div>
+
+    <!-- Side panel (contextual only) -->
+    <div class="side-panel">
+
+      <!-- New marker form -->
+      <div id="marker-create-panel" class="panel-section" style="display:none">
+        <h3>New Marker</h3>
+        <form id="marker-form" hx-post="/plots/{{$plot.ID}}/markers" hx-target="#marker-list" hx-swap="beforeend">
+          <input type="hidden" id="shape-type" name="shape" value="">
+          <input type="hidden" id="shape-coords" name="coords" value="">
+          <div class="form-group">
+            <label>Label</label>
+            <input type="text" name="label" id="marker-label" placeholder="e.g. Oak tree, Rose bed…">
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select name="category_id" id="marker-category" onchange="updatePlantedDateVisibility(this)">
+              <option value="">— none —</option>
+              {{range .Categories}}
+              <option value="{{.ID}}" data-type="{{.Type}}">{{.Name}}</option>
+              {{end}}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Layer</label>
+            <select name="layer_id">
+              <option value="">— none —</option>
+              {{range .Layers}}
+              <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+          </div>
+          <div class="form-group" id="planted-date-group" style="display:none">
+            <label>Date Planted</label>
+            <input type="date" name="planted_date">
+          </div>
+          <div class="form-group">
+            <label>End Date <span class="hint" style="display:inline">(hide marker after this date)</span></label>
+            <input type="date" name="end_date">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="cancelMarkerForm()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Marker</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Marker detail -->
+      <div id="marker-detail-panel" class="panel-section">
+        <p class="hint">Draw on the map or click a marker to get started.</p>
+      </div>
+
+      <!-- Bulk edit panel (shown when 2+ markers selected via shift+click) -->
+      <div id="bulk-edit-panel" class="panel-section" style="display:none">
+        <h3>Bulk Edit <span id="bulk-sel-count" class="panel-count"></span></h3>
+        <p class="hint" style="margin-bottom:10px">Leave a field blank to keep each marker's existing value.</p>
+        <form hx-post="/markers/bulk" hx-target="#bulk-edit-panel">
+          <input type="hidden" id="bulk-marker-ids" name="marker_ids">
+          <div class="form-group">
+            <label>Category</label>
+            <select name="category_id">
+              <option value="">— no change —</option>
+              <option value="clear">✕ Clear</option>
+              {{range .Categories}}
+              <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Layer</label>
+            <select name="layer_id">
+              <option value="">— no change —</option>
+              <option value="clear">✕ Clear</option>
+              {{range .Layers}}
+              <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date Planted</label>
+            <input type="date" name="planted_date">
+          </div>
+          <div class="form-group">
+            <label>End Date</label>
+            <input type="date" name="end_date">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="clearGroupSelection()">Clear</button>
+            <button type="submit" class="btn btn-primary">Apply to All</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Plant group creation panel (shown when 2+ markers selected via shift+click) -->
+      <div id="group-panel" class="panel-section" style="display:none">
+        <h3>Create Plant Group (<span id="group-sel-count">0</span> selected)</h3>
+        <ul id="group-sel-list" class="group-sel-list"></ul>
+        <form hx-post="/plots/{{$plot.ID}}/plant-groups"
+              hx-target="#marker-detail-panel"
+              hx-swap="innerHTML"
+              hx-on::after-request="clearGroupSelection()">
+          <input type="hidden" id="group-marker-ids" name="marker_ids">
+          <div class="form-group">
+            <input type="text" name="name" placeholder="Group name (e.g. Tomato Bed)…" required>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="clearGroupSelection()">Clear</button>
+            <button type="submit" class="btn btn-primary">Create Group</button>
+          </div>
+        </form>
+      </div>
+
+    </div><!-- /side-panel -->
+  </div><!-- /workspace -->
+</div>
+
+<script src="/static/js/canvas.js"></script>
+<script>
+  const plotCanvas = new PlotCanvas(
+    'plot-canvas',
+    '/uploads/{{$plot.ImagePath}}',
+    {{.MarkersJSON}},
+    '{{.Today}}'
+  );
+
+  function setTool(btn, tool) {
+    cancelMarkerForm();
+    if (tool !== 'path') plotCanvas.cancelPath();
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    plotCanvas.setTool(tool);
+    document.getElementById('finish-path-btn').style.display = tool === 'path' ? '' : 'none';
+  }
+
+  function updatePlantedDateVisibility(sel) {
+    const opt = sel.options[sel.selectedIndex];
+    const isPlant = opt && opt.dataset.type === 'plant';
+    document.getElementById('planted-date-group').style.display = isPlant ? '' : 'none';
+  }
+
+  function cancelMarkerForm() {
+    document.getElementById('marker-create-panel').style.display = 'none';
+    document.getElementById('planted-date-group').style.display = 'none';
+    plotCanvas.clearPending();
+  }
+
+  function removeMarker(id) {
+    const el = document.getElementById('marker-' + id);
+    if (el) el.remove();
+    plotCanvas.removeMarker(id);
+    updateMarkerCount();
+  }
+
+  function updateMarkerCount() {
+    document.getElementById('marker-count').textContent =
+      '(' + document.getElementById('marker-list').children.length + ')';
+  }
+
+  function updateCatFilter() {
+    const ids = [...document.querySelectorAll('#category-filters input:checked')].map(c => +c.dataset.catId);
+    plotCanvas.setCatFilter(ids);
+  }
+
+  function updateLayerFilter() {
+    const ids = [...document.querySelectorAll('#layer-filters input[data-layer-id]:checked')].map(c => +c.dataset.layerId);
+    plotCanvas.setLayerFilter(ids);
+  }
+
+  function updateExpiredFilter() {
+    plotCanvas.setShowExpired(document.getElementById('show-expired').checked);
+  }
+
+  function toggleAll(panelId, attr, on) {
+    document.querySelectorAll('#' + panelId + ' input[' + attr + ']').forEach(cb => cb.checked = on);
+    if (attr === 'data-cat-id') updateCatFilter();
+    else updateLayerFilter();
+  }
+
+  // Dropdown panel toggle
+  function toggleDropdown(id) {
+    const dd = document.getElementById(id);
+    const isOpen = dd.classList.contains('open');
+    closeDropdowns();
+    if (!isOpen) dd.classList.add('open');
+  }
+
+  function closeDropdowns() {
+    document.querySelectorAll('.panel-dropdown').forEach(d => d.classList.remove('open'));
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.panel-dropdown')) closeDropdowns();
+  });
+
+  window.onShapeDrawn = function (shape, coords) {
+    document.getElementById('shape-type').value = shape;
+    document.getElementById('shape-coords').value = JSON.stringify(coords);
+    document.getElementById('marker-create-panel').style.display = 'block';
+    document.getElementById('marker-label').focus();
+  };
+
+  document.body.addEventListener('markerCreated', function (e) {
+    const d = e.detail;
+    const coords = typeof d.coords === 'string' ? JSON.parse(d.coords) : d.coords;
+    plotCanvas.finalizePending(d.id, d.shape, coords, d.label, d.catId || 0, d.layerId || 0, d.color || '#64748b', d.endDate || '');
+    document.getElementById('marker-create-panel').style.display = 'none';
+    document.getElementById('planted-date-group').style.display = 'none';
+    document.getElementById('marker-form').reset();
+    updateMarkerCount();
+  });
+
+  window.onZoomChange = pct => { document.getElementById('zoom-level').textContent = pct + '%'; };
+
+  window.onMultiSelect = function(ids, items) {
+    const bulkPanel  = document.getElementById('bulk-edit-panel');
+    const groupPanel = document.getElementById('group-panel');
+    const detailPanel = document.getElementById('marker-detail-panel');
+
+    if (ids.length >= 2) {
+      // ── Bulk edit panel ──────────────────────────────────────
+      bulkPanel.style.display = '';
+      document.getElementById('bulk-sel-count').textContent = '(' + ids.length + ')';
+      document.getElementById('bulk-marker-ids').value = ids.join(',');
+
+      // ── Group creation panel ─────────────────────────────────
+      groupPanel.style.display = '';
+      document.getElementById('group-sel-count').textContent = ids.length;
+      document.getElementById('group-sel-list').innerHTML =
+        items.map(m => '<li class="group-sel-item">' + escHtml(m.label) + '</li>').join('');
+      document.getElementById('group-marker-ids').value = ids.join(',');
+
+      // ── Clear the marker detail pane ─────────────────────────
+      detailPanel.innerHTML = '';
+
+    } else if (ids.length === 1) {
+      bulkPanel.style.display  = 'none';
+      groupPanel.style.display = 'none';
+      // Reload the single selected marker's detail
+      htmx.ajax('GET', '/markers/' + ids[0], { target: '#marker-detail-panel', swap: 'innerHTML' });
+
+    } else {
+      bulkPanel.style.display  = 'none';
+      groupPanel.style.display = 'none';
+      detailPanel.innerHTML = '<p class="hint">Draw on the map or click a marker to get started.</p>';
+    }
+  };
+
+  function clearGroupSelection() {
+    plotCanvas.clearGroupSelection(); // fires onMultiSelect([]) which hides all panels
+  }
+
+  // Called by canvas when a regular (non-shift) click happens — exits group mode
+  window.clearGroupMode = function() {
+    window.onShiftSelect = null;
+  };
+
+  // After any HTMX swap into the detail panel, activate group mode if the
+  // new content is a plant-group panel (detected via data-group-id).
+  document.getElementById('marker-detail-panel').addEventListener('htmx:afterSwap', function() {
+    const groupEl = this.querySelector('[data-group-id]');
+    if (groupEl) {
+      const groupId = parseInt(groupEl.dataset.groupId, 10);
+      const raw = (groupEl.dataset.memberIds || '').trim();
+      const memberIds = raw ? raw.split(/\s+/).map(Number).filter(Boolean) : [];
+      if (window.plotCanvas) plotCanvas.selectMarkers(memberIds);
+      window.onShiftSelect = function(markerId) {
+        htmx.ajax('POST', '/plant-groups/' + groupId + '/members', {
+          target: '#marker-detail-panel',
+          swap: 'innerHTML',
+          values: { marker_id: String(markerId) }
+        });
+      };
+    } else {
+      window.onShiftSelect = null;
+    }
+  });
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+{{end}}

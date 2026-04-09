@@ -1,0 +1,28 @@
+<div id="taxonomy-{{.MarkerID}}" class="taxonomy-block">
+  <form hx-put="/markers/{{.MarkerID}}/taxonomy"
+        hx-target="#taxonomy-{{.MarkerID}}"
+        hx-swap="outerHTML"
+        class="taxonomy-form">
+    <div class="taxonomy-grid">
+      <div class="form-group">
+        <label>Genus</label>
+        <input type="text" name="genus"
+               value="{{if .Taxonomy}}{{.Taxonomy.Genus}}{{end}}"
+               placeholder="e.g. Rosa">
+      </div>
+      <div class="form-group">
+        <label>Species</label>
+        <input type="text" name="species"
+               value="{{if .Taxonomy}}{{.Taxonomy.Species}}{{end}}"
+               placeholder="e.g. Rosa canina">
+      </div>
+      <div class="form-group">
+        <label>Cultivar</label>
+        <input type="text" name="cultivar"
+               value="{{if .Taxonomy}}{{.Taxonomy.Cultivar}}{{end}}"
+               placeholder="e.g. 'Inermis'">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-sm btn-primary">Save</button>
+  </form>
+</div>

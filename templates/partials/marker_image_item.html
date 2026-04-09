@@ -1,0 +1,9 @@
+{{range .Images}}
+<div class="image-card">
+  <img src="/uploads/{{.ImagePath}}" alt="{{.Caption}}">
+  {{if .Caption}}<p>{{.Caption}}</p>{{end}}
+  {{if .Year}}<small>{{deref .Year}}</small>{{end}}
+</div>
+{{else}}
+<p class="hint">No photos yet.</p>
+{{end}}

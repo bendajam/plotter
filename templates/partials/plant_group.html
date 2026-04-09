@@ -1,0 +1,69 @@
+{{$group := .Group}}
+<div class="marker-detail"
+     data-group-id="{{$group.ID}}"
+     data-member-ids="{{range .Members}}{{.ID}} {{end}}">
+  <div class="marker-detail-header">
+    <h3>{{$group.Name}}</h3>
+    <span class="type-badge type-plant">Plant Group</span>
+  </div>
+
+  <details class="marker-edit-details">
+    <summary class="marker-edit-summary">Edit group</summary>
+    <form hx-put="/plant-groups/{{$group.ID}}"
+          hx-target="#marker-detail-panel"
+          hx-swap="innerHTML"
+          class="marker-edit-form">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" name="name" value="{{$group.Name}}" required>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-sm btn-danger" type="button"
+          hx-delete="/plant-groups/{{$group.ID}}"
+          hx-confirm="Delete this group? Members will be ungrouped."
+          hx-target="#marker-detail-panel"
+          hx-swap="innerHTML">Delete Group</button>
+        <button type="submit" class="btn btn-sm btn-primary">Save</button>
+      </div>
+    </form>
+  </details>
+
+  <div class="detail-section">
+    <h4>Members ({{len .Members}})</h4>
+    {{if .Members}}
+    <ul class="group-member-list">
+      {{range .Members}}
+      <li class="group-member-item" onclick="if(window.plotCanvas) plotCanvas.selectMarker({{.ID}})">
+        <span class="cat-dot" style="background:{{if .CategoryColor}}{{.CategoryColor}}{{else}}#64748b{{end}}"></span>
+        <span class="group-member-label">{{if .Label}}{{.Label}}{{else}}<em>unlabeled</em>{{end}}</span>
+        <button class="btn-icon btn-danger"
+          hx-delete="/plant-groups/{{$group.ID}}/members/{{.ID}}"
+          hx-confirm="Remove from group?"
+          hx-target="#marker-detail-panel"
+          hx-swap="innerHTML"
+          title="Remove from group"
+          onclick="event.stopPropagation()">&#x2715;</button>
+      </li>
+      {{end}}
+    </ul>
+    {{else}}
+    <p class="hint">No members yet.</p>
+    {{end}}
+  </div>
+
+  <div class="detail-section">
+    <h4>Group Harvest Log</h4>
+    {{template "group_harvest_list.html" (dict "Harvests" .Harvests "GroupID" $group.ID)}}
+    <form hx-post="/plant-groups/{{$group.ID}}/harvests"
+          hx-target="#group-harvest-list-{{$group.ID}}"
+          hx-swap="outerHTML"
+          class="harvest-form">
+      <div class="harvest-form-row">
+        <input type="date" name="date" value="{{.Today}}" required>
+        <input type="number" name="weight_grams" placeholder="Weight (g)" min="0.1" step="0.1" required>
+      </div>
+      <input type="text" name="notes" placeholder="Notes (optional)" class="harvest-notes-input">
+      <button type="submit" class="btn btn-sm btn-primary">+ Log Harvest</button>
+    </form>
+  </div>
+</div>

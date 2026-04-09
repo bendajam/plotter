@@ -1,0 +1,29 @@
+<div id="harvest-list-{{.MarkerID}}">
+  {{if .Harvests}}
+  <table class="harvest-table">
+    <thead>
+      <tr><th>Date</th><th>Weight</th><th>Notes</th><th></th></tr>
+    </thead>
+    <tbody>
+      {{$total := 0.0}}
+      {{range .Harvests}}
+      <tr>
+        <td>{{.Date}}</td>
+        <td class="harvest-weight">{{printf "%.0f" .WeightGrams}} g</td>
+        <td class="harvest-notes">{{.Notes}}</td>
+        <td>
+          <button class="btn-icon btn-danger"
+            hx-delete="/harvests/{{.ID}}"
+            hx-confirm="Delete this harvest record?"
+            hx-target="#harvest-list-{{.MarkerID}}"
+            hx-swap="outerHTML">&#x2715;</button>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  <p class="harvest-total">Total: <strong>{{harvestTotal .Harvests}}</strong></p>
+  {{else}}
+  <p class="hint">No harvests recorded yet.</p>
+  {{end}}
+</div>
