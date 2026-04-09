@@ -1,0 +1,6 @@
+[build]
+  cmd = "CGO_ENABLED=0 go build -o ./tmp/main ."
+  bin = "./tmp/main"
+  include_ext = ["go", "html", "css", "js"]
+  exclude_dir = ["tmp", "uploads", "static"]
+  delay = 500
