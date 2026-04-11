@@ -411,6 +411,9 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 }
 .entry-form textarea { resize: vertical; }
 .file-label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: #64748b; }
+.entry-form-photos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.entry-form-photos input[type="file"] { flex: 1 1 160px; width: auto; padding: 5px 0; }
+.entry-form-photos input[type="text"] { flex: 1 1 140px; width: auto; }
 
 /* Inline forms */
 .inline-form { margin-top: 12px; }

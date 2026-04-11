@@ -145,16 +145,37 @@ func (h *Handler) CreateEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	r.ParseMultipartForm(64 << 20)
 	date := strings.TrimSpace(r.FormValue("date"))
 	if date == "" {
 		date = time.Now().Format("2006-01-02")
 	}
 	notes := strings.TrimSpace(r.FormValue("notes"))
 
-	if _, err := h.db.CreateEntry(markerID, date, notes); err != nil {
+	entryID, err := h.db.CreateEntry(markerID, date, notes)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Attach any photos uploaded with the entry form.
+	if r.MultipartForm != nil {
+		caption := strings.TrimSpace(r.FormValue("caption"))
+		for _, fh := range r.MultipartForm.File["images"] {
+			file, err := fh.Open()
+			if err != nil {
+				continue
+			}
+			ext := strings.ToLower(filepath.Ext(fh.Filename))
+			filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+			savePath := filepath.Join("uploads", "markers", filename)
+			if out, err := os.Create(savePath); err == nil {
+				io.Copy(out, file)
+				out.Close()
+				h.db.AddEntryImage(entryID, "markers/"+filename, caption)
+			}
+			file.Close()
+		}
 	}
 
 	entries, err := h.db.GetEntriesWithImages(markerID)
