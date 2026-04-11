@@ -475,20 +475,22 @@ class PlotCanvas {
     switch (shape) {
       case 'point': {
         const px = coords.x * W, py = coords.y * H;
+        // Points keep a constant screen size regardless of zoom level.
+        const pr = dotR / this.zoom;
         if (selected || pending) {
           ctx.save();
           ctx.strokeStyle = 'rgba(255,255,255,0.7)';
           ctx.lineWidth   = lw * 2.5;
           ctx.beginPath();
-          ctx.arc(px, py, dotR + 2, 0, Math.PI * 2);
+          ctx.arc(px, py, pr + 2 / this.zoom, 0, Math.PI * 2);
           ctx.stroke();
           ctx.restore();
         }
         ctx.beginPath();
-        ctx.arc(px, py, dotR, 0, Math.PI * 2);
+        ctx.arc(px, py, pr, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        if (label) this._label(ctx, label, px + dotR + 3, py + fSize * 0.4, fSize, stroke);
+        if (label) this._label(ctx, label, px + pr + 3 / this.zoom, py + fSize * 0.4, fSize, stroke);
         break;
       }
       case 'circle': {
@@ -609,7 +611,7 @@ class PlotCanvas {
     switch (this.tool) {
       case 'point': {
         ctx.beginPath();
-        ctx.arc(x1 * W, y1 * H, dotR, 0, Math.PI * 2);
+        ctx.arc(x1 * W, y1 * H, dotR / this.zoom, 0, Math.PI * 2);
         ctx.fill(); ctx.stroke();
         break;
       }
