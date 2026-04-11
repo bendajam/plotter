@@ -12,11 +12,22 @@ import (
 	"plotter/handlers"
 )
 
-func main() {
-	os.MkdirAll("uploads/plots", 0755)
-	os.MkdirAll("uploads/markers", 0755)
+func env(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
 
-	database, err := db.Init("plotter.db")
+func main() {
+	dbPath   := env("PLOTTER_DB", "plotter.db")
+	port     := env("PLOTTER_PORT", "8080")
+	uploadDir := env("PLOTTER_UPLOAD_DIR", "uploads")
+
+	os.MkdirAll(uploadDir+"/plots", 0755)
+	os.MkdirAll(uploadDir+"/markers", 0755)
+
+	database, err := db.Init(dbPath)
 	if err != nil {
 		log.Fatal("db init:", err)
 	}
@@ -32,7 +43,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
 
 	r.Get("/", h.ListPlots)
 	r.Get("/plots/new", h.NewPlot)
@@ -77,6 +88,7 @@ func main() {
 	r.Put("/layers/{id}", h.UpdateLayer)
 	r.Delete("/layers/{id}", h.DeleteLayer)
 
-	log.Println("Listening on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	addr := ":" + port
+	log.Println("Listening on http://localhost" + addr)
+	log.Fatal(http.ListenAndServe(addr, r))
 }

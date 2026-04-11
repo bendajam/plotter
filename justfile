@@ -66,3 +66,37 @@ logs:
 # Show what is listening on the port
 status:
     @lsof -i :{{port}} || echo "Nothing on :{{port}}"
+
+# ── Deployment ────────────────────────────────────────────────
+
+deploy_dir := "/opt/plotter"
+
+# Install binary + assets to deploy_dir (run as root or with sudo)
+install: build
+    install -d {{deploy_dir}}/data/uploads/plots {{deploy_dir}}/data/uploads/markers {{deploy_dir}}/data/backups
+    install -m 755 ./plotter         {{deploy_dir}}/plotter
+    cp -r static templates           {{deploy_dir}}/
+    install -m 755 deploy/backup.sh  {{deploy_dir}}/deploy/backup.sh
+    @echo "Installed to {{deploy_dir}}"
+
+# Install and enable the systemd service (run as root)
+install-service: install
+    install -m 644 deploy/plotter.service /etc/systemd/system/plotter.service
+    systemctl daemon-reload
+    systemctl enable plotter
+    systemctl restart plotter
+    systemctl status plotter
+
+# Reload after a binary update (run as root)
+deploy: build
+    install -m 755 ./plotter {{deploy_dir}}/plotter
+    cp -r static templates   {{deploy_dir}}/
+    systemctl restart plotter
+    @echo "Deployed and restarted."
+
+# Run a manual backup
+backup:
+    PLOTTER_DB={{deploy_dir}}/data/plotter.db \
+    PLOTTER_UPLOAD_DIR={{deploy_dir}}/data/uploads \
+    PLOTTER_BACKUP_DIR={{deploy_dir}}/data/backups \
+    {{deploy_dir}}/deploy/backup.sh
