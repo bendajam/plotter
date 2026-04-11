@@ -45,6 +45,16 @@ go install github.com/air-verse/air@latest
 just dev
 ```
 
+## Configuration
+
+The binary is configured via environment variables. All have sensible defaults for local development.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PLOTTER_PORT` | `8080` | Port the HTTP server listens on |
+| `PLOTTER_DB` | `plotter.db` | Path to the SQLite database file |
+| `PLOTTER_UPLOAD_DIR` | `uploads` | Directory for uploaded plot and marker images |
+
 ## Task runner
 
 ```
@@ -62,11 +72,92 @@ just open       # open app in browser
 just status     # show what's on port 8080
 ```
 
+### Deployment recipes
+
+```
+just install          # build + copy binary and assets to /opt/plotter
+just install-service  # install + register and start the systemd service
+just deploy           # rebuild and restart a running service
+just backup           # run a manual database and uploads backup
+```
+
+## Deploying on a server
+
+The `deploy/` directory contains ready-to-use configuration files for a Linux server deployment.
+
+### systemd service
+
+`deploy/plotter.service` runs Plotter as a system service under a dedicated `plotter` user.
+
+```sh
+# Create the user and data directories
+sudo useradd --system --no-create-home plotter
+sudo mkdir -p /opt/plotter/data/uploads/plots /opt/plotter/data/uploads/markers /opt/plotter/data/backups
+sudo chown -R plotter:plotter /opt/plotter/data
+
+# Install everything and enable the service
+sudo just install-service
+```
+
+To update after a code change:
+
+```sh
+sudo just deploy
+```
+
+To check logs:
+
+```sh
+sudo journalctl -u plotter -f
+```
+
+### nginx reverse proxy
+
+`deploy/nginx.conf` is a drop-in nginx config that terminates TLS and proxies to the local server.
+
+```sh
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/plotter
+# Edit server_name and certificate paths, then:
+sudo ln -s /etc/nginx/sites-available/plotter /etc/nginx/sites-enabled/plotter
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Backups
+
+`deploy/backup.sh` backs up the SQLite database (using a live-safe online backup) and the uploads directory. It prunes copies older than 30 days by default.
+
+Add it to cron to run nightly:
+
+```sh
+sudo crontab -e
+# Add:
+0 3 * * * /opt/plotter/deploy/backup.sh >> /var/log/plotter-backup.log 2>&1
+```
+
+Run a manual backup at any time:
+
+```sh
+just backup
+# or directly:
+sudo /opt/plotter/deploy/backup.sh
+```
+
+Backup behaviour is controlled by environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PLOTTER_BACKUP_DIR` | `/opt/plotter/data/backups` | Where backups are written |
+| `PLOTTER_BACKUP_KEEP_DAYS` | `30` | Days of backups to retain |
+
 ## Project structure
 
 ```
 plotter/
 ├── db/              # database layer (schema, migrations, all queries)
+├── deploy/
+│   ├── backup.sh        # cron-friendly backup script
+│   ├── nginx.conf        # nginx reverse proxy config
+│   └── plotter.service  # systemd unit file
 ├── handlers/        # HTTP handlers
 ├── static/
 │   ├── css/         # styles
@@ -76,7 +167,7 @@ plotter/
 │   ├── partials/    # HTMX partial templates
 │   └── *.html       # full page templates
 ├── uploads/
-│   └── markers/     # uploaded marker photos
+│   └── markers/     # uploaded marker photos (local dev only)
 ├── main.go
 └── justfile
 ```
@@ -95,7 +186,6 @@ plotter/
 
 ## Notes
 
-- The database file is `plotter.db` in the working directory. Back it up to preserve your data.
-- Uploaded images are stored in `uploads/markers/`.
-- The server binds to `:8080`. No auth is included — run it locally or behind a reverse proxy.
-- `CGO_ENABLED=0` is required on some macOS versions to produce a valid binary (set in `justfile`).
+- No authentication is included — run locally or behind a reverse proxy restricted to trusted networks.
+- `CGO_ENABLED=0` is required on some macOS versions to produce a valid binary (set in `justfile` and `.air.toml`).
+- The SQLite database is a single file. Back it up regularly — the backup script handles this automatically when run via cron.
