@@ -74,6 +74,7 @@ deploy_dir := "/opt/plotter"
 # Install binary + assets to deploy_dir (run as root or with sudo)
 install: build
     install -d {{deploy_dir}}/data/uploads/plots {{deploy_dir}}/data/uploads/markers {{deploy_dir}}/data/backups
+    install -d {{deploy_dir}}/deploy
     install -m 755 ./plotter         {{deploy_dir}}/plotter
     cp -r static templates           {{deploy_dir}}/
     install -m 755 deploy/backup.sh  {{deploy_dir}}/deploy/backup.sh
@@ -81,6 +82,8 @@ install: build
 
 # Install and enable the systemd service (run as root)
 install-service: install
+    useradd --system --no-create-home --shell /usr/sbin/nologin plotter 2>/dev/null || true
+    chown -R plotter:plotter {{deploy_dir}}/data
     install -m 644 deploy/plotter.service /etc/systemd/system/plotter.service
     systemctl daemon-reload
     systemctl enable plotter

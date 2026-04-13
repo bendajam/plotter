@@ -5,11 +5,26 @@ import (
 	"html/template"
 	"math"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 
 	"plotter/db"
 )
+
+// templateRoot returns the directory that contains the "templates" folder.
+// It prefers a path relative to the running binary (works when deployed),
+// falling back to the source-file path (works during `go test` and `go run`).
+func templateRoot() string {
+	if exe, err := os.Executable(); err == nil {
+		dir := filepath.Dir(exe)
+		if _, err := os.Stat(filepath.Join(dir, "templates")); err == nil {
+			return dir
+		}
+	}
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(file), "..")
+}
 
 type Handler struct {
 	db        *db.DB
@@ -17,9 +32,7 @@ type Handler struct {
 }
 
 func New(database *db.DB) (*Handler, error) {
-	_, file, _, _ := runtime.Caller(0)
-	root := filepath.Join(filepath.Dir(file), "..")
-	tmplDir := filepath.Join(root, "templates")
+	tmplDir := filepath.Join(templateRoot(), "templates")
 
 	layout := filepath.Join(tmplDir, "layout.html")
 
