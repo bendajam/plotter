@@ -97,7 +97,7 @@ deploy: build
     systemctl restart plotter
     @echo "Deployed and restarted."
 
-# Run a manual backup
+# Run a manual backup (set GCS_BUCKET and GOOGLE_APPLICATION_CREDENTIALS in env for GCS upload)
 backup:
     PLOTTER_DB={{deploy_dir}}/data/plotter.db \
     PLOTTER_UPLOAD_DIR={{deploy_dir}}/data/uploads \
