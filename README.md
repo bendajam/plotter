@@ -131,7 +131,7 @@ Add it to cron to run nightly:
 ```sh
 sudo crontab -e
 # Add:
-0 3 * * * /opt/plotter/deploy/backup.sh >> /var/log/plotter-backup.log 2>&1
+0 3 * * * python3 /opt/plotter/deploy/backup.py >> /var/log/plotter-backup.log 2>&1
 ```
 
 Run a manual backup at any time:
@@ -139,7 +139,7 @@ Run a manual backup at any time:
 ```sh
 just backup
 # or directly:
-sudo /opt/plotter/deploy/backup.sh
+sudo python3 /opt/plotter/deploy/backup.py
 ```
 
 Backup behaviour is controlled by environment variables:

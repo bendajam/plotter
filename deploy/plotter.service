@@ -15,8 +15,8 @@ Environment=PLOTTER_DB=/opt/plotter/data/plotter.db
 Environment=PLOTTER_UPLOAD_DIR=/opt/plotter/data/uploads
 
 # GCS backup — set both to enable cloud backups via backup.sh
-Environment=GOOGLE_APPLICATION_CREDENTIALS=/opt/plotter/gcp-key.json
-Environment=GCS_BUCKET=pretzger-plotter
+# Environment=GOOGLE_APPLICATION_CREDENTIALS=/opt/plotter/gcp-key.json
+# Environment=GCS_BUCKET=bucket-name
 
 # Uncomment to load all vars (including secrets) from a file instead:
 # EnvironmentFile=/etc/plotter/env
