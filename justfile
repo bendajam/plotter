@@ -78,11 +78,14 @@ install: build
     install -m 755 ./plotter         {{deploy_dir}}/plotter
     cp -r static templates           {{deploy_dir}}/
     install -m 755 deploy/backup.py  {{deploy_dir}}/deploy/backup.py
+    install -m 755 deploy/restore.py {{deploy_dir}}/deploy/restore.py
+    install -m 644 deploy/gcs.py     {{deploy_dir}}/deploy/gcs.py
     @echo "Installed to {{deploy_dir}}"
 
 # Install and enable the systemd service (run as root)
 install-service: install
-    useradd --system --no-create-home --shell /usr/sbin/nologin plotter 2>/dev/null || true
+    groupadd plotter 2>/dev/null || true
+    useradd --system --no-create-home --shell /usr/sbin/nologin --gid plotter plotter 2>/dev/null || true
     chown -R plotter:plotter {{deploy_dir}}/data
     install -m 644 deploy/plotter.service /etc/systemd/system/plotter.service
     systemctl daemon-reload
@@ -97,9 +100,33 @@ deploy: build
     systemctl restart plotter
     @echo "Deployed and restarted."
 
-# Run a manual backup (set GCS_BUCKET and GOOGLE_APPLICATION_CREDENTIALS in env for GCS upload)
+# Push local DB and uploads to GCS using your local GOOGLE_APPLICATION_CREDENTIALS
+# Requires GCS_BUCKET and GOOGLE_APPLICATION_CREDENTIALS to be set in your environment
+push:
+    PYTHONPATH=deploy \
+    PLOTTER_DB=plotter.db \
+    PLOTTER_UPLOAD_DIR=uploads \
+    PLOTTER_BACKUP_DIR=tmp/backups \
+    python3 deploy/backup.py
+
+# Run a manual full backup
 backup:
     PLOTTER_DB={{deploy_dir}}/data/plotter.db \
     PLOTTER_UPLOAD_DIR={{deploy_dir}}/data/uploads \
     PLOTTER_BACKUP_DIR={{deploy_dir}}/data/backups \
     python3 {{deploy_dir}}/deploy/backup.py
+
+# Gzip the uploads/images directory only
+backup-uploads:
+    PLOTTER_UPLOAD_DIR={{deploy_dir}}/data/uploads \
+    PLOTTER_BACKUP_DIR={{deploy_dir}}/data/backups \
+    python3 {{deploy_dir}}/deploy/backup.py --uploads-only
+
+# List available backups in GCS
+restore-list:
+    python3 {{deploy_dir}}/deploy/restore.py --list
+
+# Restore latest backup from GCS (sudo required to manage the service)
+# To restore a specific backup: just restore 20260413_025047
+restore timestamp='':
+    python3 {{deploy_dir}}/deploy/restore.py {{timestamp}}

@@ -13,5 +13,5 @@ uploads/
 # macOS
 .DS_Store
 
-# Air (live reload)
+# Air (live reload) and local backup staging
 tmp/
