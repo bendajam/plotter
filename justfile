@@ -124,7 +124,8 @@ backup-uploads:
 
 # List available backups in GCS
 restore-list:
-    python3 {{deploy_dir}}/deploy/restore.py --list
+    # For this command to work ensure service account has storage.objectViewer permissions
+    PYTHONPATH=deploy python3 deploy/restore.py --list
 
 # Restore latest backup from GCS (sudo required to manage the service)
 # To restore a specific backup: just restore 20260413_025047
