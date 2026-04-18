@@ -77,7 +77,7 @@ install: build
     install -d {{deploy_dir}}/deploy
     install -m 755 ./plotter         {{deploy_dir}}/plotter
     cp -r static templates           {{deploy_dir}}/
-    install -m 755 deploy/backup.sh  {{deploy_dir}}/deploy/backup.sh
+    install -m 755 deploy/backup.py  {{deploy_dir}}/deploy/backup.py
     @echo "Installed to {{deploy_dir}}"
 
 # Install and enable the systemd service (run as root)
@@ -102,4 +102,4 @@ backup:
     PLOTTER_DB={{deploy_dir}}/data/plotter.db \
     PLOTTER_UPLOAD_DIR={{deploy_dir}}/data/uploads \
     PLOTTER_BACKUP_DIR={{deploy_dir}}/data/backups \
-    {{deploy_dir}}/deploy/backup.sh
+    python3 {{deploy_dir}}/deploy/backup.py
