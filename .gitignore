@@ -4,6 +4,9 @@ plotter
 # Database
 plotter.db
 
+# Python
+__pycache__
+
 # Uploads (user data)
 uploads/
 
