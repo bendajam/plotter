@@ -356,6 +356,10 @@
     if (el) el.remove();
     plotCanvas.removeMarker(id);
     updateMarkerCount();
+    if (plotCanvas.selectedMarkerId === id) {
+      document.getElementById('marker-detail-panel').innerHTML =
+        '<p class="hint">Draw on the map or click a marker to get started.</p>';
+    }
   }
 
   function updateMarkerCount() {
