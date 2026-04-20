@@ -104,16 +104,23 @@ func (h *Handler) ViewMarker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	transplants, err := h.db.GetTransplants(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	today := time.Now().Format("2006-01-02")
 	data := map[string]interface{}{
-		"Marker":     marker,
-		"Entries":    entries,
-		"Today":      today,
-		"Categories": cats,
-		"Layers":     layers,
-		"Taxonomy":   (*db.PlantTaxonomy)(nil),
-		"Harvests":   []db.Harvest{},
-		"Group":      (*db.PlantGroup)(nil),
+		"Marker":      marker,
+		"Entries":     entries,
+		"Today":       today,
+		"Categories":  cats,
+		"Layers":      layers,
+		"Taxonomy":    (*db.PlantTaxonomy)(nil),
+		"Harvests":    []db.Harvest{},
+		"Group":       (*db.PlantGroup)(nil),
+		"Transplants": transplants,
 	}
 
 	if marker.CategoryType == "plant" {
@@ -341,6 +348,50 @@ func (h *Handler) BulkUpdateMarkers(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("HX-Refresh", "true")
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) CreateTransplant(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	r.ParseForm()
+	newCoords := strings.TrimSpace(r.FormValue("coords"))
+	date := strings.TrimSpace(r.FormValue("date"))
+	notes := strings.TrimSpace(r.FormValue("notes"))
+
+	if newCoords == "" {
+		http.Error(w, "coords required", http.StatusBadRequest)
+		return
+	}
+	if date == "" {
+		date = time.Now().Format("2006-01-02")
+	}
+
+	marker, err := h.db.GetMarker(id)
+	if err != nil {
+		http.Error(w, "marker not found", http.StatusNotFound)
+		return
+	}
+
+	if _, err := h.db.CreateTransplant(id, marker.Coords, newCoords, date, notes); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	transplants, err := h.db.GetTransplants(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("HX-Trigger", fmt.Sprintf(`{"markerTransplanted":{"id":%d,"coords":%s}}`, id, newCoords))
+	h.renderPartial(w, r, "transplant_list", map[string]interface{}{
+		"Transplants": transplants,
+		"MarkerID":    id,
+	})
 }
 
 func (h *Handler) DeleteMarker(w http.ResponseWriter, r *http.Request) {

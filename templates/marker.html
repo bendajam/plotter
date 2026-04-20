@@ -102,6 +102,12 @@
   {{end}}
 
   <section class="section">
+    <h2>Location History</h2>
+    {{template "transplant_list.html" (dict "Transplants" .Transplants "MarkerID" $marker.ID)}}
+    <p class="hint" style="margin-top:8px">To transplant this marker, open it from the plot view.</p>
+  </section>
+
+  <section class="section">
     <h2>Notes</h2>
     <div id="entries-list">
       {{range .Entries}}

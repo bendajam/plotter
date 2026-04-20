@@ -48,10 +48,11 @@ func New(database *db.DB) (*Handler, error) {
 		templates[name] = t
 	}
 
-	partials := []string{"marker_detail", "marker_item", "weather_item", "entry_item", "marker_image_item", "category_list", "layer_list", "entry_images", "taxonomy", "harvest_list", "group_harvest_list", "plant_group"}
+	partials := []string{"marker_detail", "marker_item", "weather_item", "entry_item", "marker_image_item", "category_list", "layer_list", "entry_images", "taxonomy", "harvest_list", "group_harvest_list", "plant_group", "transplant_list"}
 	// These partials compose sub-templates
-	withPlantSubs := map[string]bool{"marker_detail": true}
-	withGroupSubs := map[string]bool{"plant_group": true}
+	withPlantSubs      := map[string]bool{"marker_detail": true}
+	withGroupSubs      := map[string]bool{"plant_group": true}
+	withTransplantSubs := map[string]bool{"marker_detail": true}
 	for _, name := range partials {
 		page := filepath.Join(tmplDir, "partials", name+".html")
 		files := []string{page}
@@ -64,6 +65,11 @@ func New(database *db.DB) (*Handler, error) {
 		if withGroupSubs[name] {
 			files = append(files,
 				filepath.Join(tmplDir, "partials", "group_harvest_list.html"),
+			)
+		}
+		if withTransplantSubs[name] {
+			files = append(files,
+				filepath.Join(tmplDir, "partials", "transplant_list.html"),
 			)
 		}
 		t, err := template.New(name+".html").Funcs(funcMap()).ParseFiles(files...)
@@ -80,6 +86,7 @@ func New(database *db.DB) (*Handler, error) {
 			layout, page,
 			filepath.Join(tmplDir, "partials", "taxonomy.html"),
 			filepath.Join(tmplDir, "partials", "harvest_list.html"),
+			filepath.Join(tmplDir, "partials", "transplant_list.html"),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("template %s: %w", name, err)

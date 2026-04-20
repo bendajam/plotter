@@ -71,6 +71,16 @@
 
   <a href="/markers/{{$marker.ID}}" class="btn btn-sm btn-secondary" style="margin:8px 0;display:inline-block">Full Detail →</a>
 
+  <div class="detail-section">
+    <div class="transplant-section-header">
+      <h4>Location History</h4>
+      <button id="transplant-btn-{{$marker.ID}}" class="btn btn-sm btn-secondary">
+        Transplant
+      </button>
+    </div>
+    {{template "transplant_list.html" (dict "Transplants" .Transplants "MarkerID" $marker.ID)}}
+  </div>
+
   {{if eq $marker.CategoryType "plant"}}
   <div class="detail-section">
     <h4>Plant Identity</h4>

@@ -19,6 +19,10 @@ class PlotCanvas {
     // Pending shape waiting for label form
     this.pendingShape = null;
 
+    // Transplant mode
+    this.transplantMode    = false;
+    this.transplantMarkerId = null;
+
     // Selection
     this.selectedMarkerId = null;
     this.selectedMarkerIds = new Set();
@@ -147,6 +151,26 @@ class PlotCanvas {
     this._render();
   }
 
+  startTransplant(markerId) {
+    this.transplantMode     = true;
+    this.transplantMarkerId = markerId;
+    this.canvas.style.cursor = 'crosshair';
+  }
+
+  cancelTransplant() {
+    this.transplantMode     = false;
+    this.transplantMarkerId = null;
+    this.canvas.style.cursor = this.tool === 'select' ? 'pointer' : 'crosshair';
+  }
+
+  updateMarkerCoords(id, coords) {
+    const m = this.markers.find(m => m.id === id);
+    if (m) {
+      m.coords = coords;
+      this._render();
+    }
+  }
+
   // Zoom by a factor, optionally centred on a MouseEvent
   zoomBy(factor, mouseEvent) {
     const W = this.canvas.width, H = this.canvas.height;
@@ -260,6 +284,22 @@ class PlotCanvas {
     }
     if (e.button !== 0) return;
     e.preventDefault();
+
+    // Transplant mode: next left-click sets the new position
+    if (this.transplantMode) {
+      const pos    = this._getRelPos(e);
+      const marker = this.markers.find(m => m.id === this.transplantMarkerId);
+      if (marker) {
+        const newCoords = this._shiftedCoords(marker.coords, marker.shape, pos.x, pos.y);
+        this.transplantMode     = false;
+        this.transplantMarkerId = null;
+        this.canvas.style.cursor = 'pointer';
+        if (typeof window.onTransplantClick === 'function') {
+          window.onTransplantClick(marker.id, newCoords);
+        }
+      }
+      return;
+    }
 
     if (e.ctrlKey || e.metaKey) {
       this._startPan(e);
@@ -638,6 +678,31 @@ class PlotCanvas {
       }
     }
     ctx.restore();
+  }
+
+  // ── Transplant helpers ────────────────────────────────────────
+
+  // Return new coords with the shape's anchor moved to (newX, newY).
+  // For multi-point shapes (line, path) the whole shape is shifted by the same delta.
+  _shiftedCoords(coords, shape, newX, newY) {
+    switch (shape) {
+      case 'point':
+        return { x: newX, y: newY };
+      case 'circle':
+        return { cx: newX, cy: newY, r: coords.r };
+      case 'rect':
+        return { x: newX, y: newY, w: coords.w, h: coords.h };
+      case 'line': {
+        const dx = newX - coords.x1, dy = newY - coords.y1;
+        return { x1: newX, y1: newY, x2: coords.x2 + dx, y2: coords.y2 + dy };
+      }
+      case 'path': {
+        const dx = newX - coords.points[0].x, dy = newY - coords.points[0].y;
+        return { points: coords.points.map(p => ({ x: p.x + dx, y: p.y + dy })) };
+      }
+      default:
+        return Object.assign({}, coords);
+    }
   }
 
   // ── Hit testing ───────────────────────────────────────────────

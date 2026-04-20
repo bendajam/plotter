@@ -1,0 +1,14 @@
+<div id="transplant-list-{{.MarkerID}}">
+  {{if .Transplants}}
+  <ul class="transplant-list">
+    {{range .Transplants}}
+    <li class="transplant-item">
+      <strong class="transplant-date">{{.TransplantedDate}}</strong>
+      {{if .Notes}}<span class="transplant-notes"> — {{.Notes}}</span>{{end}}
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p class="hint">No transplant history.</p>
+  {{end}}
+</div>
