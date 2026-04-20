@@ -105,6 +105,16 @@ type EntryImage struct {
 	CreatedAt time.Time
 }
 
+type Transplant struct {
+	ID               int64
+	MarkerID         int64
+	OldCoords        string
+	NewCoords        string
+	TransplantedDate string
+	Notes            string
+	CreatedAt        time.Time
+}
+
 type Weather struct {
 	ID           int64
 	PlotID       int64
@@ -250,6 +260,19 @@ func Init(path string) (*DB, error) {
 		sqldb.Exec(`ALTER TABLE markers ADD COLUMN planted_date DATE`)
 		sqldb.Exec(`UPDATE _version SET v = 6`)
 		v = 6
+	}
+
+	if v < 7 {
+		sqldb.Exec(`CREATE TABLE IF NOT EXISTS transplants (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			marker_id INTEGER NOT NULL REFERENCES markers(id) ON DELETE CASCADE,
+			old_coords TEXT NOT NULL,
+			new_coords TEXT NOT NULL,
+			transplanted_date DATE NOT NULL DEFAULT (date('now')),
+			notes TEXT NOT NULL DEFAULT '',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`)
+		sqldb.Exec(`UPDATE _version SET v = 7`)
+		v = 7
 	}
 
 	// Idempotent seeds
@@ -609,6 +632,41 @@ func (d *DB) DeleteHarvest(id int64) (int64, error) {
 	d.QueryRow(`SELECT marker_id FROM harvests WHERE id=?`, id).Scan(&markerID)
 	_, err := d.Exec(`DELETE FROM harvests WHERE id=?`, id)
 	return markerID, err
+}
+
+// ── Transplants ───────────────────────────────────────────────
+
+func (d *DB) GetTransplants(markerID int64) ([]Transplant, error) {
+	rows, err := d.Query(
+		`SELECT id, marker_id, old_coords, new_coords, transplanted_date, notes, created_at
+		 FROM transplants WHERE marker_id=? ORDER BY transplanted_date DESC, created_at DESC`,
+		markerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Transplant
+	for rows.Next() {
+		var t Transplant
+		rows.Scan(&t.ID, &t.MarkerID, &t.OldCoords, &t.NewCoords, &t.TransplantedDate, &t.Notes, &t.CreatedAt)
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+func (d *DB) CreateTransplant(markerID int64, oldCoords, newCoords, date, notes string) (int64, error) {
+	res, err := d.Exec(
+		`INSERT INTO transplants (marker_id, old_coords, new_coords, transplanted_date, notes) VALUES (?,?,?,?,?)`,
+		markerID, oldCoords, newCoords, date, notes)
+	if err != nil {
+		return 0, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	_, err = d.Exec(`UPDATE markers SET coords=? WHERE id=?`, newCoords, markerID)
+	return id, err
 }
 
 // ── Weather ───────────────────────────────────────────────────

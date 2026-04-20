@@ -198,6 +198,10 @@
       <div class="canvas-container">
         <canvas id="plot-canvas"></canvas>
       </div>
+      <div id="transplant-banner" class="transplant-banner" style="display:none">
+        <span>Click the new location for <strong class="transplant-label"></strong> (Esc to cancel)</span>
+        <button class="btn btn-sm btn-secondary" onclick="cancelTransplant()">Cancel</button>
+      </div>
       <p class="canvas-hint">Scroll to zoom · Ctrl+drag to pan · Select: click marker · Shift+click to multi-select &amp; create groups · Path: click points, Enter/✓ to finish, Esc to cancel</p>
     </div>
 
@@ -324,6 +328,7 @@
     {{.MarkersJSON}},
     '{{.Today}}'
   );
+  window.plotCanvas = plotCanvas;
 
   function setTool(btn, tool) {
     cancelMarkerForm();
@@ -480,5 +485,78 @@
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
+
+  // ── Transplant ────────────────────────────────────────────────
+
+  // Delegated listener — fires even for buttons loaded via HTMX after page load.
+  // ID pattern "transplant-btn-{markerId}" avoids data-attribute stripping by html/template.
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('button[id^="transplant-btn-"]');
+    if (!btn) return;
+    const markerId = +btn.id.replace('transplant-btn-', '');
+    const m        = plotCanvas.markers.find(m => m.id === markerId);
+    const label    = (m && m.label) ? m.label : 'marker';
+    plotCanvas.startTransplant(markerId);
+    document.querySelector('#transplant-banner .transplant-label').textContent = label;
+    document.getElementById('transplant-banner').style.display = '';
+  });
+
+  function cancelTransplant() {
+    if (window.plotCanvas) plotCanvas.cancelTransplant();
+    document.getElementById('transplant-banner').style.display = 'none';
+    const el = document.getElementById('transplant-confirm');
+    if (el) el.remove();
+  }
+
+  window.onTransplantClick = function(markerId, newCoords) {
+    document.getElementById('transplant-banner').style.display = 'none';
+
+    const coordsStr = JSON.stringify(newCoords);
+    const today     = new Date().toISOString().slice(0, 10);
+    const panel     = document.getElementById('marker-detail-panel');
+
+    const old = document.getElementById('transplant-confirm');
+    if (old) old.remove();
+
+    const div = document.createElement('div');
+    div.id        = 'transplant-confirm';
+    div.className = 'transplant-confirm-form';
+    div.innerHTML =
+      '<strong>Confirm Transplant</strong>' +
+      '<form hx-post="/markers/' + markerId + '/transplants"' +
+           ' hx-target="#transplant-list-' + markerId + '"' +
+           ' hx-swap="outerHTML">' +
+        '<input type="hidden" name="coords" value=\'' + escHtml(coordsStr) + '\'>' +
+        '<div class="form-group" style="margin-top:8px">' +
+          '<label>Date</label>' +
+          '<input type="date" name="date" value="' + today + '" required>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>Notes</label>' +
+          '<input type="text" name="notes" placeholder="Reason for move...">' +
+        '</div>' +
+        '<div class="form-actions">' +
+          '<button type="button" class="btn btn-sm btn-secondary" onclick="cancelTransplant()">Cancel</button>' +
+          '<button type="submit" class="btn btn-sm btn-primary">Confirm Move</button>' +
+        '</div>' +
+      '</form>';
+    panel.prepend(div);
+    htmx.process(div);
+  };
+
+  document.body.addEventListener('markerTransplanted', function(e) {
+    const d      = e.detail;
+    const coords = typeof d.coords === 'string' ? JSON.parse(d.coords) : d.coords;
+    if (window.plotCanvas) plotCanvas.updateMarkerCoords(d.id, coords);
+    const el = document.getElementById('transplant-confirm');
+    if (el) el.remove();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && window.plotCanvas && plotCanvas.transplantMode) {
+      e.preventDefault();
+      cancelTransplant();
+    }
+  });
 </script>
 {{end}}

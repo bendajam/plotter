@@ -56,6 +56,7 @@ func main() {
 	r.Get("/markers/{id}", h.ViewMarker)
 	r.Put("/markers/{id}", h.UpdateMarker)
 	r.Post("/markers/{id}/entries", h.CreateEntry)
+	r.Post("/markers/{id}/transplants", h.CreateTransplant)
 	r.Delete("/markers/{id}", h.DeleteMarker)
 
 	r.Post("/entries/{id}/images", h.AddEntryImages)
