@@ -263,6 +263,12 @@ func Init(path string) (*DB, error) {
 	}
 
 	if v < 7 {
+		sqldb.Exec(`ALTER TABLE markers ADD COLUMN deleted_at DATETIME`)
+		sqldb.Exec(`UPDATE _version SET v = 7`)
+		v = 7
+	}
+
+	if v < 8 {
 		sqldb.Exec(`CREATE TABLE IF NOT EXISTS transplants (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			marker_id INTEGER NOT NULL REFERENCES markers(id) ON DELETE CASCADE,
@@ -271,8 +277,16 @@ func Init(path string) (*DB, error) {
 			transplanted_date DATE NOT NULL DEFAULT (date('now')),
 			notes TEXT NOT NULL DEFAULT '',
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`)
-		sqldb.Exec(`UPDATE _version SET v = 7`)
-		v = 7
+		sqldb.Exec(`UPDATE _version SET v = 8`)
+		v = 8
+	}
+
+	if v < 9 {
+		// Soft-delete support — error is ignored on fresh DBs that already
+		// have this column from the v7 block above.
+		sqldb.Exec(`ALTER TABLE markers ADD COLUMN deleted_at DATETIME`)
+		sqldb.Exec(`UPDATE _version SET v = 9`)
+		v = 9
 	}
 
 	// Idempotent seeds
@@ -443,7 +457,7 @@ func scanMarker(row interface{ Scan(...any) error }) (*Marker, error) {
 }
 
 func (d *DB) GetMarkers(plotID int64) ([]Marker, error) {
-	rows, err := d.Query(`SELECT `+markerCols+markerJoin+` WHERE m.plot_id=? ORDER BY m.created_at`, plotID)
+	rows, err := d.Query(`SELECT `+markerCols+markerJoin+` WHERE m.plot_id=? AND m.deleted_at IS NULL ORDER BY m.created_at`, plotID)
 	if err != nil {
 		return nil, err
 	}
@@ -460,7 +474,7 @@ func (d *DB) GetMarkers(plotID int64) ([]Marker, error) {
 }
 
 func (d *DB) GetMarker(id int64) (*Marker, error) {
-	return scanMarker(d.QueryRow(`SELECT `+markerCols+markerJoin+` WHERE m.id=?`, id))
+	return scanMarker(d.QueryRow(`SELECT `+markerCols+markerJoin+` WHERE m.id=? AND m.deleted_at IS NULL`, id))
 }
 
 func (d *DB) CreateMarker(plotID int64, shape, coords, label, endDate, plantedDate string, categoryID, layerID *int64) (int64, error) {
@@ -495,7 +509,7 @@ func (d *DB) UpdateMarker(id int64, label, endDate, plantedDate string, category
 }
 
 func (d *DB) DeleteMarker(id int64) error {
-	_, err := d.Exec(`DELETE FROM markers WHERE id=?`, id)
+	_, err := d.Exec(`UPDATE markers SET deleted_at = CURRENT_TIMESTAMP WHERE id=?`, id)
 	return err
 }
 
@@ -731,7 +745,7 @@ func (d *DB) DeletePlantGroup(id int64) error {
 }
 
 func (d *DB) GetGroupMarkers(groupID int64) ([]Marker, error) {
-	rows, err := d.Query(`SELECT `+markerCols+markerJoin+` WHERE m.group_id=? ORDER BY m.label`, groupID)
+	rows, err := d.Query(`SELECT `+markerCols+markerJoin+` WHERE m.group_id=? AND m.deleted_at IS NULL ORDER BY m.label`, groupID)
 	if err != nil {
 		return nil, err
 	}
