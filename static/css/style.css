@@ -575,3 +575,26 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
   font-size: 0.85rem;
 }
 .transplant-confirm-form strong { display: block; margin-bottom: 4px; color: #166534; }
+
+/* Time / date filter in panel-bar */
+.panel-date-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border-left: 1px solid #e2e8f0;
+  margin-left: 4px;
+}
+.panel-date-filter input[type="date"] {
+  font-size: 0.8rem;
+  padding: 4px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+  color: #1e293b;
+  cursor: pointer;
+}
+.panel-date-filter input[type="date"]:focus {
+  outline: none;
+  border-color: #166534;
+}

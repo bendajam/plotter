@@ -20,8 +20,11 @@ class PlotCanvas {
     this.pendingShape = null;
 
     // Transplant mode
-    this.transplantMode    = false;
+    this.transplantMode     = false;
     this.transplantMarkerId = null;
+
+    // Hover tracking (for label-on-hover)
+    this.hoveredMarkerId = null;
 
     // Selection
     this.selectedMarkerId = null;
@@ -42,17 +45,19 @@ class PlotCanvas {
     this.activeLayers     = null; // Set of layerIds or null (show all)
     this.showExpired      = false;
     this.today            = today || '';
+    this.dateFilter       = '';   // 'YYYY-MM-DD' or '' for no filter
 
     // Markers
     this.markers = markersData ? markersData.map(m => ({
-      id:      m.id,
-      shape:   m.shape,
-      coords:  typeof m.coords === 'string' ? JSON.parse(m.coords) : m.coords,
-      label:   m.label,
-      catId:   m.catId   || 0,
-      layerId: m.layerId || 0,
-      color:   m.color   || '#64748b',
-      endDate: m.endDate || '',
+      id:          m.id,
+      shape:       m.shape,
+      coords:      typeof m.coords === 'string' ? JSON.parse(m.coords) : m.coords,
+      label:       m.label,
+      catId:       m.catId       || 0,
+      layerId:     m.layerId     || 0,
+      color:       m.color       || '#64748b',
+      endDate:     m.endDate     || '',
+      plantedDate: m.plantedDate || '',
     })) : [];
 
     this.canvas.style.cursor = 'pointer'; // matches default select tool
@@ -127,6 +132,11 @@ class PlotCanvas {
 
   setShowExpired(val) {
     this.showExpired = val;
+    this._render();
+  }
+
+  setDateFilter(date) {
+    this.dateFilter = date || '';
     this._render();
   }
 
@@ -231,14 +241,11 @@ class PlotCanvas {
     this.canvas.addEventListener('mousemove',  e => this._onMove(e));
     this.canvas.addEventListener('mouseup',    e => this._onUp(e));
     this.canvas.addEventListener('mouseleave', () => {
-      if (this.drawing && this.tool !== 'path') {
-        this.drawing = false;
-        this._render();
-      }
-      if (this._panning) {
-        this._panning = false;
-        this._render();
-      }
+      let dirty = false;
+      if (this.drawing && this.tool !== 'path') { this.drawing = false; dirty = true; }
+      if (this._panning)                         { this._panning = false; dirty = true; }
+      if (this.hoveredMarkerId !== null)          { this.hoveredMarkerId = null; dirty = true; }
+      if (dirty) this._render();
     });
     this.canvas.addEventListener('wheel', e => {
       e.preventDefault();
@@ -379,6 +386,18 @@ class PlotCanvas {
       this._render();
       return;
     }
+
+    // Update hovered marker for label-on-hover (only in select mode when idle)
+    if (this.tool === 'select' && !this.drawing && !this.transplantMode) {
+      const pos    = this._getRelPos(e);
+      const hit    = this._hitTest(pos.x, pos.y);
+      const newId  = hit ? hit.id : null;
+      if (newId !== this.hoveredMarkerId) {
+        this.hoveredMarkerId = newId;
+        this._render();
+      }
+    }
+
     if (!this.drawing) return;
     e.preventDefault();
     const pos = this._getRelPos(e);
@@ -464,7 +483,9 @@ class PlotCanvas {
 
     for (const m of this.markers) {
       if (!this._isVisible(m)) continue;
-      this._drawShape(m.coords, m.shape, this.selectedMarkerIds.has(m.id), m.label, false, m.color);
+      const selected  = this.selectedMarkerIds.has(m.id);
+      const showLabel = selected || m.id === this.hoveredMarkerId;
+      this._drawShape(m.coords, m.shape, selected, showLabel ? m.label : '', false, m.color);
     }
 
     if (this.pendingShape) {
@@ -488,8 +509,11 @@ class PlotCanvas {
     if (this.activeCategories && !this.activeCategories.has(m.catId)) return false;
     // Layer filter
     if (this.activeLayers && !this.activeLayers.has(m.layerId)) return false;
-    // Expiry filter
-    if (!this.showExpired && m.endDate && this.today && m.endDate < this.today) return false;
+    // Expiry filter (against real today when no date filter, against filter date when set)
+    const refDate = this.dateFilter || this.today;
+    if (!this.showExpired && m.endDate && refDate && m.endDate < refDate) return false;
+    // Date filter: hide markers not yet planted by the selected date
+    if (this.dateFilter && m.plantedDate && m.plantedDate > this.dateFilter) return false;
     return true;
   }
 
