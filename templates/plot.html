@@ -35,11 +35,22 @@
         <button class="tool-btn" data-tool="path" onclick="setTool(this,'path')" title="Path (multi-segment line)">
           <img src="/static/icons/path.svg" class="tool-icon" alt="Path"><span class="tool-btn-label"></span>
         </button>
+        <button class="tool-btn" data-tool="area" onclick="setTool(this,'area')" title="Area (freehand brush)">
+          <img src="/static/icons/area.svg" class="tool-icon" alt="Area"><span class="tool-btn-label"></span>
+        </button>
         <button class="tool-btn active" data-tool="select" onclick="setTool(this,'select')" title="Select marker">
           <img src="/static/icons/select.svg" class="tool-icon" alt="Select"><span class="tool-btn-label"></span>
         </button>
         <button id="finish-path-btn" class="tool-btn" style="display:none;background:#166534;color:#fff"
           onclick="plotCanvas.finishPath()" title="Finish path (Enter)">✓ Done</button>
+        <span id="brush-size-control" style="display:none;align-items:center;gap:6px;margin-left:4px">
+          <label for="brush-size-input" class="tool-label" style="margin:0">Brush:</label>
+          <input id="brush-size-input" type="range" min="1" max="10" step="1" value="3"
+            style="width:80px;cursor:pointer"
+            oninput="setBrushSize(this.value)"
+            title="Brush size">
+          <span id="brush-size-label" class="tool-label" style="margin:0;min-width:2em">3</span>
+        </span>
         <span class="tool-sep"></span>
         <span class="tool-label">Zoom:</span>
         <button class="tool-btn zoom-btn" onclick="plotCanvas.zoomBy(1.4,null)" title="Zoom in">
@@ -340,10 +351,20 @@
   function setTool(btn, tool) {
     cancelMarkerForm();
     if (tool !== 'path') plotCanvas.cancelPath();
+    if (tool !== 'area') plotCanvas.cancelArea();
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     plotCanvas.setTool(tool);
     document.getElementById('finish-path-btn').style.display = tool === 'path' ? '' : 'none';
+    const bsc = document.getElementById('brush-size-control');
+    bsc.style.display = tool === 'area' ? 'flex' : 'none';
+  }
+
+  function setBrushSize(val) {
+    // Slider 1-10 maps to normalised brush radius 0.005-0.05
+    const radius = val / 200;
+    plotCanvas.brushRadius = radius;
+    document.getElementById('brush-size-label').textContent = val;
   }
 
   function updatePlantedDateVisibility(sel) {

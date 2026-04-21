@@ -1,5 +1,7 @@
 'use strict';
 
+const RASTER_SIZE = 1024; // offscreen canvas resolution for area tool
+
 class PlotCanvas {
   constructor(canvasId, imageUrl, markersData, today) {
     this.canvas = document.getElementById(canvasId);
@@ -15,6 +17,18 @@ class PlotCanvas {
 
     // Path tool state
     this.pathPoints = []; // array of {x, y} in normalised coords
+
+    // Area (freehand brush) tool state
+    this.brushPoints    = []; // preview path points
+    this.brushRadius    = 0.015; // in normalised coords (fraction of image width)
+    this._lastBrushPos  = null; // previous raster paint position
+
+    // Offscreen raster canvas for marching-squares contour extraction
+    this._rasterCanvas = document.createElement('canvas');
+    this._rasterCanvas.width  = RASTER_SIZE;
+    this._rasterCanvas.height = RASTER_SIZE;
+    this._rasterCtx = this._rasterCanvas.getContext('2d');
+    this._rasterCtx.fillStyle = '#000';
 
     // Pending shape waiting for label form
     this.pendingShape = null;
@@ -161,6 +175,47 @@ class PlotCanvas {
     this._render();
   }
 
+  cancelArea() {
+    this.brushPoints   = [];
+    this._lastBrushPos = null;
+    this.drawing       = false;
+    this._render();
+  }
+
+  _paintRasterDot(nx, ny) {
+    const rW = this._rasterCanvas.width, rH = this._rasterCanvas.height;
+    const r  = this.brushRadius * rW; // radius relative to width, matching preview
+    this._rasterCtx.beginPath();
+    this._rasterCtx.arc(nx * rW, ny * rH, r, 0, Math.PI * 2);
+    this._rasterCtx.fill();
+  }
+
+  _paintRasterStroke(x1, y1, x2, y2) {
+    const rW = this._rasterCanvas.width, rH = this._rasterCanvas.height;
+    this._rasterCtx.beginPath();
+    this._rasterCtx.moveTo(x1 * rW, y1 * rH);
+    this._rasterCtx.lineTo(x2 * rW, y2 * rH);
+    this._rasterCtx.stroke();
+  }
+
+  _confirmArea() {
+    this.brushPoints   = [];
+    this._lastBrushPos = null;
+    // Extract contour from the offscreen raster via marching squares
+    const raw = marchingSquares(this._rasterCtx, this._rasterCanvas.width, this._rasterCanvas.height);
+    if (raw.length < 3) { this._render(); return; }
+    // Simplify the many small marching-squares segments with Douglas-Peucker
+    const simplified = douglasPeucker(raw, 0.003);
+    if (simplified.length < 3) { this._render(); return; }
+
+    const coords = { points: simplified };
+    this.pendingShape = { shape: 'area', coords };
+    this._render();
+    if (typeof window.onShapeDrawn === 'function') {
+      window.onShapeDrawn('area', coords);
+    }
+  }
+
   startTransplant(markerId) {
     this.transplantMode     = true;
     this.transplantMarkerId = markerId;
@@ -215,6 +270,10 @@ class PlotCanvas {
       this.canvas.height = this.image.naturalHeight;
       this.canvas.style.width  = '100%';
       this.canvas.style.height = 'auto';
+      // Size the raster canvas to match the image aspect ratio so that
+      // normalized coords map identically in both the raster and the main canvas.
+      this._rasterCanvas.width  = RASTER_SIZE;
+      this._rasterCanvas.height = Math.max(1, Math.round(RASTER_SIZE * this.image.naturalHeight / this.image.naturalWidth));
       this._render();
     };
     this.image.onerror = () => {
@@ -242,7 +301,10 @@ class PlotCanvas {
     this.canvas.addEventListener('mouseup',    e => this._onUp(e));
     this.canvas.addEventListener('mouseleave', () => {
       let dirty = false;
-      if (this.drawing && this.tool !== 'path') { this.drawing = false; dirty = true; }
+      if (this.drawing && this.tool !== 'path') {
+        if (this.tool === 'area') { this._confirmArea(); return; }
+        this.drawing = false; dirty = true;
+      }
       if (this._panning)                         { this._panning = false; dirty = true; }
       if (this.hoveredMarkerId !== null)          { this.hoveredMarkerId = null; dirty = true; }
       if (dirty) this._render();
@@ -258,6 +320,10 @@ class PlotCanvas {
       if (this.tool === 'path') {
         if (e.key === 'Enter') { e.preventDefault(); this.finishPath(); }
         if (e.key === 'Escape') { e.preventDefault(); this.cancelPath(); }
+      }
+      if (this.tool === 'area' && e.key === 'Escape') {
+        e.preventDefault();
+        this.cancelArea();
       }
     });
   }
@@ -371,6 +437,24 @@ class PlotCanvas {
       return;
     }
 
+    if (this.tool === 'area') {
+      const pos = this._getRelPos(e);
+      this._rasterCtx.clearRect(0, 0, RASTER_SIZE, RASTER_SIZE);
+      this._rasterCtx.fillStyle   = '#000';
+      this._rasterCtx.strokeStyle = '#000';
+      this._rasterCtx.lineCap     = 'round';
+      this._rasterCtx.lineJoin    = 'round';
+      this._rasterCtx.lineWidth   = this.brushRadius * this._rasterCanvas.width * 2;
+      this.brushPoints   = [{ x: pos.x, y: pos.y }];
+      this._lastBrushPos = pos;
+      this._paintRasterDot(pos.x, pos.y); // initial dot for single clicks
+      this.drawing = true;
+      this.curX = pos.x;
+      this.curY = pos.y;
+      this._render();
+      return;
+    }
+
     this.drawing = true;
     const pos    = this._getRelPos(e);
     this.startX  = pos.x;
@@ -398,6 +482,26 @@ class PlotCanvas {
       }
     }
 
+    // Area tool: always show brush cursor, collect points while dragging
+    if (this.tool === 'area') {
+      e.preventDefault();
+      const pos = this._getRelPos(e);
+      this.curX = pos.x;
+      this.curY = pos.y;
+      if (this.drawing && this._lastBrushPos) {
+        // Paint a continuous stroke segment on the raster — no threshold, no gaps
+        this._paintRasterStroke(this._lastBrushPos.x, this._lastBrushPos.y, pos.x, pos.y);
+        this._lastBrushPos = pos;
+        // Collect preview points with a light threshold (only for drawing the path preview)
+        const last = this.brushPoints[this.brushPoints.length - 1];
+        if (Math.hypot(pos.x - last.x, pos.y - last.y) > 0.003) {
+          this.brushPoints.push({ x: pos.x, y: pos.y });
+        }
+      }
+      this._render();
+      return;
+    }
+
     if (!this.drawing) return;
     e.preventDefault();
     const pos = this._getRelPos(e);
@@ -414,6 +518,12 @@ class PlotCanvas {
     }
     if (!this.drawing) return;
     if (this.tool === 'path') return; // path points added on mousedown; finish via button/Enter
+    if (this.tool === 'area') {
+      e.preventDefault();
+      this.drawing = false;
+      this._confirmArea();
+      return;
+    }
     e.preventDefault();
     this.drawing = false;
     const pos    = this._getRelPos(e);
@@ -492,8 +602,13 @@ class PlotCanvas {
       this._drawShape(this.pendingShape.coords, this.pendingShape.shape, false, '', true, '#f59e0b');
     }
 
+    // Area brush cursor — always shown when tool is active
+    if (this.tool === 'area') {
+      this._drawAreaPreview();
+    }
+
     // Live preview while dragging a new shape
-    if (this.drawing) {
+    if (this.drawing && this.tool !== 'area') {
       if (this.tool === 'path') {
         this._drawPathPreview();
       } else {
@@ -615,6 +730,23 @@ class PlotCanvas {
         if (label) this._label(ctx, label, pts[0].x * W + 4, pts[0].y * H - 4, fSize, stroke);
         break;
       }
+      case 'area': {
+        const pts = coords.points;
+        if (!pts || pts.length < 3) break;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x * W, pts[0].y * H);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x * W, pts[i].y * H);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        // Centroid label
+        if (label) {
+          let cx = 0, cy = 0;
+          for (const p of pts) { cx += p.x; cy += p.y; }
+          this._label(ctx, label, (cx / pts.length) * W, (cy / pts.length) * H, fSize, stroke);
+        }
+        break;
+      }
     }
     ctx.restore();
   }
@@ -647,6 +779,37 @@ class PlotCanvas {
       ctx.arc(p.x * W, p.y * H, dotR, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.restore();
+  }
+
+  _drawAreaPreview() {
+    const ctx = this.ctx;
+    const W = this.canvas.width, H = this.canvas.height;
+    const pts = this.brushPoints;
+    const r   = this.brushRadius * W; // uniform pixel radius → circle on screen
+
+    ctx.save();
+    ctx.fillStyle   = 'rgba(245,158,11,0.25)';
+    ctx.strokeStyle = 'rgba(245,158,11,0.6)';
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.lineWidth   = r * 2;
+
+    if (pts.length >= 2) {
+      // Draw the stroke path — matches what's painted on the raster
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x * W, pts[0].y * H);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x * W, pts[i].y * H);
+      ctx.stroke();
+    }
+
+    // Always show the brush cursor circle at the current mouse position
+    ctx.lineWidth = Math.max(1, W * 0.001);
+    ctx.beginPath();
+    ctx.arc(this.curX * W, this.curY * H, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
     ctx.restore();
   }
 
@@ -720,7 +883,8 @@ class PlotCanvas {
         const dx = newX - coords.x1, dy = newY - coords.y1;
         return { x1: newX, y1: newY, x2: coords.x2 + dx, y2: coords.y2 + dy };
       }
-      case 'path': {
+      case 'path':
+      case 'area': {
         const dx = newX - coords.points[0].x, dy = newY - coords.points[0].y;
         return { points: coords.points.map(p => ({ x: p.x + dx, y: p.y + dy })) };
       }
@@ -755,6 +919,11 @@ class PlotCanvas {
           if (this._distToSeg(x, y, pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y) < t) return true;
         }
         return false;
+      }
+      case 'area': {
+        const pts = c.points;
+        if (!pts || pts.length < 3) return false;
+        return pointInPolygon(x, y, pts);
       }
     }
     return false;
@@ -793,4 +962,127 @@ function hexToRGBA(hex, alpha) {
   const b = parseInt(hex.slice(5, 7), 16);
   if (isNaN(r)) return `rgba(100,116,139,${alpha})`;
   return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ── Marching squares contour extraction ──────────────────────────────────────
+// Returns an ordered array of {x, y} points (normalised 0-1) tracing the
+// outer boundary of painted pixels on the offscreen raster canvas.
+
+function marchingSquares(ctx, w, h) {
+  const { data } = ctx.getImageData(0, 0, w, h);
+  const inside = (x, y) => x >= 0 && x < w && y >= 0 && y < h &&
+                            data[(y * w + x) * 4 + 3] > 128;
+
+  // Collect undirected segments between edge midpoints
+  const segments = [];
+  for (let y = 0; y < h - 1; y++) {
+    for (let x = 0; x < w - 1; x++) {
+      const tl = inside(x,   y)   ? 8 : 0;
+      const tr = inside(x+1, y)   ? 4 : 0;
+      const br = inside(x+1, y+1) ? 2 : 0;
+      const bl = inside(x,   y+1) ? 1 : 0;
+      const c  = tl | tr | br | bl;
+      if (c === 0 || c === 15) continue;
+
+      // Edge midpoints normalised independently per axis
+      const T = { x: (x + 0.5) / w, y:  y      / h };
+      const R = { x: (x + 1)   / w, y: (y+0.5) / h };
+      const B = { x: (x + 0.5) / w, y: (y+1)   / h };
+      const L = { x:  x        / w, y: (y+0.5) / h };
+
+      switch (c) {
+        case  1: segments.push([L, B]); break;
+        case  2: segments.push([B, R]); break;
+        case  3: segments.push([L, R]); break;
+        case  4: segments.push([T, R]); break;
+        case  5: segments.push([T, R]); segments.push([L, B]); break;
+        case  6: segments.push([T, B]); break;
+        case  7: segments.push([T, L]); break;
+        case  8: segments.push([T, L]); break;
+        case  9: segments.push([T, B]); break;
+        case 10: segments.push([T, R]); segments.push([L, B]); break;
+        case 11: segments.push([T, R]); break;
+        case 12: segments.push([L, R]); break;
+        case 13: segments.push([B, R]); break;
+        case 14: segments.push([L, B]); break;
+      }
+    }
+  }
+
+  return connectSegments(segments);
+}
+
+// Stitch unordered segments into a single ordered polygon by matching endpoints.
+function connectSegments(segments) {
+  if (segments.length === 0) return [];
+  const prec = 2000; // grid snap precision
+  const key  = p => `${Math.round(p.x * prec)},${Math.round(p.y * prec)}`;
+
+  // Build: point-key → list of segment indices touching it
+  const adj = new Map();
+  for (let i = 0; i < segments.length; i++) {
+    for (const p of segments[i]) {
+      const k = key(p);
+      if (!adj.has(k)) adj.set(k, []);
+      adj.get(k).push(i);
+    }
+  }
+
+  const visited = new Array(segments.length).fill(false);
+  const polygon = [];
+  let si = 0;                      // start segment index
+  let cur = segments[0][0];        // current point
+
+  for (;;) {
+    visited[si] = true;
+    polygon.push(cur);
+
+    const [a, b] = segments[si];
+    const next = key(cur) === key(a) ? b : a;
+    const neighbors = adj.get(key(next)) || [];
+    const nextSi = neighbors.find(i => !visited[i]);
+    if (nextSi === undefined) break;
+    si  = nextSi;
+    cur = next;
+  }
+
+  return polygon;
+}
+
+// ── Douglas-Peucker polyline simplification ───────────────────────────────────
+
+function perpendicularDistance(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  if (dx === 0 && dy === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy);
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+function douglasPeucker(pts, eps) {
+  if (pts.length < 3) return pts.slice();
+  let maxD = 0, idx = 0;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const d = perpendicularDistance(pts[i], pts[0], pts[pts.length - 1]);
+    if (d > maxD) { maxD = d; idx = i; }
+  }
+  if (maxD > eps) {
+    const L = douglasPeucker(pts.slice(0, idx + 1), eps);
+    const R = douglasPeucker(pts.slice(idx), eps);
+    return L.slice(0, -1).concat(R);
+  }
+  return [pts[0], pts[pts.length - 1]];
+}
+
+// ── Ray-casting point-in-polygon test ─────────────────────────────────────────
+
+function pointInPolygon(x, y, polygon) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y;
+    const xj = polygon[j].x, yj = polygon[j].y;
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
 }
