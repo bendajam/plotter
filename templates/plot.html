@@ -193,6 +193,13 @@
           </div>
         </div>
 
+        <!-- Time filter -->
+        <div class="panel-date-filter">
+          <span class="tool-label">View as of:</span>
+          <input type="date" id="date-filter" onchange="updateDateFilter()" title="Show only markers planted by this date">
+          <button class="btn btn-sm btn-secondary" id="date-filter-clear" onclick="clearDateFilter()" style="display:none" title="Clear date filter">✕ Clear</button>
+        </div>
+
       </div><!-- /panel-bar -->
 
       <div class="canvas-container">
@@ -379,6 +386,18 @@
 
   function updateExpiredFilter() {
     plotCanvas.setShowExpired(document.getElementById('show-expired').checked);
+  }
+
+  function updateDateFilter() {
+    const val = document.getElementById('date-filter').value;
+    plotCanvas.setDateFilter(val);
+    document.getElementById('date-filter-clear').style.display = val ? '' : 'none';
+  }
+
+  function clearDateFilter() {
+    document.getElementById('date-filter').value = '';
+    plotCanvas.setDateFilter('');
+    document.getElementById('date-filter-clear').style.display = 'none';
   }
 
   function toggleAll(panelId, attr, on) {

@@ -111,14 +111,15 @@ func (h *Handler) ViewPlot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type markerJSON struct {
-		ID      int64  `json:"id"`
-		Shape   string `json:"shape"`
-		Coords  string `json:"coords"`
-		Label   string `json:"label"`
-		CatID   int64  `json:"catId"`
-		LayerID int64  `json:"layerId"`
-		Color   string `json:"color"`
-		EndDate string `json:"endDate"`
+		ID          int64  `json:"id"`
+		Shape       string `json:"shape"`
+		Coords      string `json:"coords"`
+		Label       string `json:"label"`
+		CatID       int64  `json:"catId"`
+		LayerID     int64  `json:"layerId"`
+		Color       string `json:"color"`
+		EndDate     string `json:"endDate"`
+		PlantedDate string `json:"plantedDate"`
 	}
 	jmarkers := make([]markerJSON, len(markers))
 	for i, m := range markers {
@@ -134,7 +135,7 @@ func (h *Handler) ViewPlot(w http.ResponseWriter, r *http.Request) {
 		if color == "" {
 			color = "#64748b"
 		}
-		jmarkers[i] = markerJSON{m.ID, m.Shape, m.Coords, m.Label, catID, layerID, color, m.EndDate}
+		jmarkers[i] = markerJSON{m.ID, m.Shape, m.Coords, m.Label, catID, layerID, color, m.EndDate, m.PlantedDate}
 	}
 	jbytes, _ := json.Marshal(jmarkers)
 
