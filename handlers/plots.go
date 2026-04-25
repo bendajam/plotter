@@ -198,6 +198,25 @@ func (h *Handler) ViewPlot(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ListPlotMarkers returns all non-deleted markers for a plot as JSON.
+// Used by the Android client: GET /plots/{id}/markers
+func (h *Handler) ListPlotMarkers(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	markers, err := h.db.GetMarkers(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if markers == nil {
+		markers = []db.Marker{}
+	}
+	writeJSON(w, http.StatusOK, markers)
+}
+
 func (h *Handler) DeletePlot(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {

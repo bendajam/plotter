@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,28 +23,51 @@ func (h *Handler) CreateMarker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
-	shape := r.FormValue("shape")
-	coords := r.FormValue("coords")
-	label := strings.TrimSpace(r.FormValue("label"))
-	endDate := strings.TrimSpace(r.FormValue("end_date"))
-	plantedDate := strings.TrimSpace(r.FormValue("planted_date"))
+	var shape, coords, label, endDate, plantedDate string
+	var markerCatID, markerLayID *int64
+
+	if isJSONBody(r) {
+		var req struct {
+			Shape      string          `json:"shape"`
+			Coords     json.RawMessage `json:"coords"`
+			Label      string          `json:"label"`
+			CategoryID *int64          `json:"category_id"`
+			LayerID    *int64          `json:"layer_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		shape = req.Shape
+		coords = string(req.Coords)
+		label = req.Label
+		markerCatID = req.CategoryID
+		markerLayID = req.LayerID
+	} else {
+		r.ParseForm()
+		shape = r.FormValue("shape")
+		coords = r.FormValue("coords")
+		label = strings.TrimSpace(r.FormValue("label"))
+		endDate = strings.TrimSpace(r.FormValue("end_date"))
+		plantedDate = strings.TrimSpace(r.FormValue("planted_date"))
+		parseOptID := func(key string) *int64 {
+			if s := r.FormValue(key); s != "" {
+				if id, err := strconv.ParseInt(s, 10, 64); err == nil && id > 0 {
+					return &id
+				}
+			}
+			return nil
+		}
+		markerCatID = parseOptID("category_id")
+		markerLayID = parseOptID("layer_id")
+	}
 
 	if shape == "" || coords == "" {
 		http.Error(w, "shape and coords required", http.StatusBadRequest)
 		return
 	}
 
-	parseOptID := func(key string) *int64 {
-		if s := r.FormValue(key); s != "" {
-			if id, err := strconv.ParseInt(s, 10, 64); err == nil && id > 0 {
-				return &id
-			}
-		}
-		return nil
-	}
-
-	markerID, err := h.db.CreateMarker(plotID, shape, coords, label, endDate, plantedDate, parseOptID("category_id"), parseOptID("layer_id"))
+	markerID, err := h.db.CreateMarker(plotID, shape, coords, label, endDate, plantedDate, markerCatID, markerLayID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -182,12 +206,26 @@ func (h *Handler) CreateEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseMultipartForm(64 << 20)
-	date := strings.TrimSpace(r.FormValue("date"))
+	var date, notes string
+	if isJSONBody(r) {
+		var req struct {
+			Note string `json:"note"`
+			Date string `json:"date"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		notes = req.Note
+		date = req.Date
+	} else {
+		r.ParseMultipartForm(64 << 20)
+		date = strings.TrimSpace(r.FormValue("date"))
+		notes = strings.TrimSpace(r.FormValue("notes"))
+	}
 	if date == "" {
 		date = time.Now().Format("2006-01-02")
 	}
-	notes := strings.TrimSpace(r.FormValue("notes"))
 
 	entryID, err := h.db.CreateEntry(markerID, date, notes)
 	if err != nil {
@@ -301,21 +339,44 @@ func (h *Handler) UpdateMarker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
-	label := strings.TrimSpace(r.FormValue("label"))
-	endDate := strings.TrimSpace(r.FormValue("end_date"))
-	plantedDate := strings.TrimSpace(r.FormValue("planted_date"))
+	var label, endDate, plantedDate string
+	var catID, layID *int64
 
-	parseOptID := func(key string) *int64 {
-		if s := r.FormValue(key); s != "" {
-			if v, err := strconv.ParseInt(s, 10, 64); err == nil && v > 0 {
-				return &v
-			}
+	if isJSONBody(r) {
+		var req struct {
+			Label      string `json:"label"`
+			CategoryID *int64 `json:"category_id"`
+			LayerID    *int64 `json:"layer_id"`
+			PlantedDate string `json:"planted_date"`
+			EndDate    string `json:"end_date"`
 		}
-		return nil
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		label = req.Label
+		endDate = req.EndDate
+		plantedDate = req.PlantedDate
+		catID = req.CategoryID
+		layID = req.LayerID
+	} else {
+		r.ParseForm()
+		label = strings.TrimSpace(r.FormValue("label"))
+		endDate = strings.TrimSpace(r.FormValue("end_date"))
+		plantedDate = strings.TrimSpace(r.FormValue("planted_date"))
+		parseOptID := func(key string) *int64 {
+			if s := r.FormValue(key); s != "" {
+				if v, err := strconv.ParseInt(s, 10, 64); err == nil && v > 0 {
+					return &v
+				}
+			}
+			return nil
+		}
+		catID = parseOptID("category_id")
+		layID = parseOptID("layer_id")
 	}
 
-	if err := h.db.UpdateMarker(id, label, endDate, plantedDate, parseOptID("category_id"), parseOptID("layer_id")); err != nil {
+	if err := h.db.UpdateMarker(id, label, endDate, plantedDate, catID, layID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -407,10 +468,27 @@ func (h *Handler) CreateTransplant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
-	newCoords := strings.TrimSpace(r.FormValue("coords"))
-	date := strings.TrimSpace(r.FormValue("date"))
-	notes := strings.TrimSpace(r.FormValue("notes"))
+	var newCoords, date, notes string
+
+	if isJSONBody(r) {
+		var req struct {
+			Coords json.RawMessage `json:"coords"`
+			Date   string          `json:"date"`
+			Notes  string          `json:"notes"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		newCoords = string(req.Coords)
+		date = req.Date
+		notes = req.Notes
+	} else {
+		r.ParseForm()
+		newCoords = strings.TrimSpace(r.FormValue("coords"))
+		date = strings.TrimSpace(r.FormValue("date"))
+		notes = strings.TrimSpace(r.FormValue("notes"))
+	}
 
 	if newCoords == "" {
 		http.Error(w, "coords required", http.StatusBadRequest)

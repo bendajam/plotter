@@ -54,6 +54,7 @@ func main() {
 
 	r.Post("/markers/bulk", h.BulkUpdateMarkers)
 	r.Post("/plots/{id}/markers", h.CreateMarker)
+	r.Get("/plots/{id}/markers", h.ListPlotMarkers)
 	r.Get("/markers/{id}", h.ViewMarker)
 	r.Put("/markers/{id}", h.UpdateMarker)
 	r.Post("/markers/{id}/entries", h.CreateEntry)
@@ -68,6 +69,7 @@ func main() {
 	r.Delete("/harvests/{id}", h.DeleteHarvest)
 
 	r.Post("/plots/{id}/plant-groups", h.CreatePlantGroup)
+	r.Post("/plant-groups", h.CreatePlantGroupFromBody)
 	r.Get("/plant-groups/{id}", h.ViewPlantGroup)
 	r.Put("/plant-groups/{id}", h.UpdatePlantGroup)
 	r.Delete("/plant-groups/{id}", h.DeletePlantGroup)

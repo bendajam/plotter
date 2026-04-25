@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -26,9 +27,22 @@ func (h *Handler) ListLayers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateLayer(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	name := strings.TrimSpace(r.FormValue("name"))
-	color := strings.TrimSpace(r.FormValue("color"))
+	var name, color string
+	if isJSONBody(r) {
+		var req struct {
+			Name  string `json:"name"`
+			Color string `json:"color"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+		name, color = req.Name, req.Color
+	} else {
+		r.ParseForm()
+		name = strings.TrimSpace(r.FormValue("name"))
+		color = strings.TrimSpace(r.FormValue("color"))
+	}
 	if name == "" {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return
@@ -60,9 +74,22 @@ func (h *Handler) UpdateLayer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	r.ParseForm()
-	name := strings.TrimSpace(r.FormValue("name"))
-	color := strings.TrimSpace(r.FormValue("color"))
+	var name, color string
+	if isJSONBody(r) {
+		var req struct {
+			Name  string `json:"name"`
+			Color string `json:"color"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+		name, color = req.Name, req.Color
+	} else {
+		r.ParseForm()
+		name = strings.TrimSpace(r.FormValue("name"))
+		color = strings.TrimSpace(r.FormValue("color"))
+	}
 	if err := h.db.UpdateLayer(id, name, color); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
