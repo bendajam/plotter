@@ -6,12 +6,20 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"plotter/db"
 )
 
 func (h *Handler) ListLayers(w http.ResponseWriter, r *http.Request) {
 	layers, err := h.db.GetLayers()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if h.isJSON(r) {
+		if layers == nil {
+			layers = []db.Layer{}
+		}
+		writeJSON(w, http.StatusOK, layers)
 		return
 	}
 	h.renderPartial(w, r, "layer_list", layers)
@@ -28,8 +36,18 @@ func (h *Handler) CreateLayer(w http.ResponseWriter, r *http.Request) {
 	if color == "" {
 		color = "#64748b"
 	}
-	if _, err := h.db.CreateLayer(name, color); err != nil {
+	layerID, err := h.db.CreateLayer(name, color)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if h.isJSON(r) {
+		layer, err := h.db.GetLayer(layerID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusCreated, layer)
 		return
 	}
 	layers, _ := h.db.GetLayers()
@@ -49,6 +67,15 @@ func (h *Handler) UpdateLayer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if h.isJSON(r) {
+		layer, err := h.db.GetLayer(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, layer)
+		return
+	}
 	layers, _ := h.db.GetLayers()
 	h.renderPartial(w, r, "layer_list", layers)
 }
@@ -61,6 +88,10 @@ func (h *Handler) DeleteLayer(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.db.DeleteLayer(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if h.isJSON(r) {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	layers, _ := h.db.GetLayers()

@@ -12,120 +12,120 @@ type DB struct{ *sql.DB }
 // ── Model types ───────────────────────────────────────────────
 
 type Plot struct {
-	ID        int64
-	Name      string
-	Address   string
-	ImagePath string
-	CreatedAt time.Time
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	Address   string    `json:"address"`
+	ImagePath string    `json:"image_path"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Category struct {
-	ID        int64
-	Name      string
-	Color     string
-	Type      string // "plant" | "other"
-	CreatedAt time.Time
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	Color     string    `json:"color"`
+	Type      string    `json:"type"` // "plant" | "other"
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type PlantTaxonomy struct {
-	ID        int64
-	MarkerID  int64
-	Genus     string
-	Species   string
-	Cultivar  string
-	UpdatedAt time.Time
+	ID        int64     `json:"id"`
+	MarkerID  int64     `json:"marker_id"`
+	Genus     string    `json:"genus"`
+	Species   string    `json:"species"`
+	Cultivar  string    `json:"cultivar"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type PlantGroup struct {
-	ID        int64
-	PlotID    int64
-	Name      string
-	CreatedAt time.Time
+	ID        int64     `json:"id"`
+	PlotID    int64     `json:"plot_id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type GroupHarvest struct {
-	ID          int64
-	GroupID     int64
-	Date        string
-	WeightGrams float64
-	Notes       string
-	CreatedAt   time.Time
+	ID          int64     `json:"id"`
+	GroupID     int64     `json:"group_id"`
+	Date        string    `json:"date"`
+	WeightGrams float64   `json:"weight_grams"`
+	Notes       string    `json:"notes"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type Harvest struct {
-	ID          int64
-	MarkerID    int64
-	Date        string
-	WeightGrams float64
-	Notes       string
-	CreatedAt   time.Time
+	ID          int64     `json:"id"`
+	MarkerID    int64     `json:"marker_id"`
+	Date        string    `json:"date"`
+	WeightGrams float64   `json:"weight_grams"`
+	Notes       string    `json:"notes"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type Layer struct {
-	ID        int64
-	Name      string
-	Color     string
-	CreatedAt time.Time
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	Color     string    `json:"color"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Marker struct {
-	ID            int64
-	PlotID        int64
-	Shape         string
-	Coords        string
-	Label         string
-	EndDate       string // nullable DATE, "" if unset
-	CategoryID    *int64
-	CategoryName  string
-	CategoryColor string
-	CategoryType  string // "plant" | "other"
-	LayerID       *int64
-	LayerName     string
-	LayerColor    string
-	GroupID       *int64
-	GroupName     string
-	PlantedDate   string // nullable DATE, "" if unset
-	CreatedAt     time.Time
+	ID            int64     `json:"id"`
+	PlotID        int64     `json:"plot_id"`
+	Shape         string    `json:"shape"`
+	Coords        string    `json:"coords"`
+	Label         string    `json:"label"`
+	EndDate       string    `json:"end_date"`
+	CategoryID    *int64    `json:"category_id"`
+	CategoryName  string    `json:"category_name"`
+	CategoryColor string    `json:"category_color"`
+	CategoryType  string    `json:"category_type"` // "plant" | "other"
+	LayerID       *int64    `json:"layer_id"`
+	LayerName     string    `json:"layer_name"`
+	LayerColor    string    `json:"layer_color"`
+	GroupID       *int64    `json:"group_id"`
+	GroupName     string    `json:"group_name"`
+	PlantedDate   string    `json:"planted_date"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 type MarkerEntry struct {
-	ID        int64
-	MarkerID  int64
-	Date      string
-	Notes     string
-	CreatedAt time.Time
-	Images    []EntryImage // populated by GetEntriesWithImages
+	ID        int64        `json:"id"`
+	MarkerID  int64        `json:"marker_id"`
+	Date      string       `json:"date"`
+	Notes     string       `json:"notes"`
+	CreatedAt time.Time    `json:"created_at"`
+	Images    []EntryImage `json:"images"` // populated by GetEntriesWithImages
 }
 
 type EntryImage struct {
-	ID        int64
-	EntryID   int64
-	ImagePath string
-	Caption   string
-	CreatedAt time.Time
+	ID        int64     `json:"id"`
+	EntryID   int64     `json:"entry_id"`
+	ImagePath string    `json:"image_path"`
+	Caption   string    `json:"caption"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Transplant struct {
-	ID               int64
-	MarkerID         int64
-	OldCoords        string
-	NewCoords        string
-	TransplantedDate string
-	Notes            string
-	CreatedAt        time.Time
+	ID               int64     `json:"id"`
+	MarkerID         int64     `json:"marker_id"`
+	OldCoords        string    `json:"old_coords"`
+	NewCoords        string    `json:"new_coords"`
+	TransplantedDate string    `json:"transplanted_date"`
+	Notes            string    `json:"notes"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 type Weather struct {
-	ID           int64
-	PlotID       int64
-	Date         string
-	RainfallMM   *float64
-	TempHighC    *float64
-	TempLowC     *float64
-	WindSpeedKMH *float64
-	WindDir      string
-	Notes        string
-	CreatedAt    time.Time
+	ID           int64     `json:"id"`
+	PlotID       int64     `json:"plot_id"`
+	Date         string    `json:"date"`
+	RainfallMM   *float64  `json:"rainfall_mm"`
+	TempHighC    *float64  `json:"temp_high_c"`
+	TempLowC     *float64  `json:"temp_low_c"`
+	WindSpeedKMH *float64  `json:"wind_speed_kmh"`
+	WindDir      string    `json:"wind_dir"`
+	Notes        string    `json:"notes"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 // ── Init & migrations ─────────────────────────────────────────
@@ -349,6 +349,16 @@ func (d *DB) DeletePlot(id int64) error {
 
 // ── Categories ────────────────────────────────────────────────
 
+func (d *DB) GetCategory(id int64) (*Category, error) {
+	var c Category
+	err := d.QueryRow(`SELECT id, name, color, type, created_at FROM categories WHERE id=?`, id).
+		Scan(&c.ID, &c.Name, &c.Color, &c.Type, &c.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
 func (d *DB) GetCategories() ([]Category, error) {
 	rows, err := d.Query(`SELECT id, name, color, type, created_at FROM categories ORDER BY name`)
 	if err != nil {
@@ -389,6 +399,16 @@ func (d *DB) DeleteCategory(id int64) error {
 }
 
 // ── Layers ────────────────────────────────────────────────────
+
+func (d *DB) GetLayer(id int64) (*Layer, error) {
+	var l Layer
+	err := d.QueryRow(`SELECT id, name, color, created_at FROM layers WHERE id=?`, id).
+		Scan(&l.ID, &l.Name, &l.Color, &l.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &l, nil
+}
 
 func (d *DB) GetLayers() ([]Layer, error) {
 	rows, err := d.Query(`SELECT id, name, color, created_at FROM layers ORDER BY name`)
@@ -553,6 +573,21 @@ func (d *DB) CreateEntry(markerID int64, date, notes string) (int64, error) {
 	return res.LastInsertId()
 }
 
+func (d *DB) GetEntry(id int64) (*MarkerEntry, error) {
+	var e MarkerEntry
+	err := d.QueryRow(`SELECT id, marker_id, date, notes, created_at FROM marker_entries WHERE id=?`, id).
+		Scan(&e.ID, &e.MarkerID, &e.Date, &e.Notes, &e.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	imgs, err := d.GetEntryImages(e.ID)
+	if err != nil {
+		return nil, err
+	}
+	e.Images = imgs
+	return &e, nil
+}
+
 // ── Entry Images ──────────────────────────────────────────────
 
 func (d *DB) GetEntryImages(entryID int64) ([]EntryImage, error) {
@@ -618,6 +653,16 @@ func (d *DB) UpsertTaxonomy(markerID int64, genus, species, cultivar string) (*P
 
 // ── Harvests ──────────────────────────────────────────────────
 
+func (d *DB) GetHarvest(id int64) (*Harvest, error) {
+	var h Harvest
+	err := d.QueryRow(`SELECT id, marker_id, date, weight_grams, notes, created_at FROM harvests WHERE id=?`, id).
+		Scan(&h.ID, &h.MarkerID, &h.Date, &h.WeightGrams, &h.Notes, &h.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &h, nil
+}
+
 func (d *DB) GetHarvests(markerID int64) ([]Harvest, error) {
 	rows, err := d.Query(`SELECT id, marker_id, date, weight_grams, notes, created_at FROM harvests WHERE marker_id=? ORDER BY date DESC`, markerID)
 	if err != nil {
@@ -649,6 +694,16 @@ func (d *DB) DeleteHarvest(id int64) (int64, error) {
 }
 
 // ── Transplants ───────────────────────────────────────────────
+
+func (d *DB) GetTransplant(id int64) (*Transplant, error) {
+	var t Transplant
+	err := d.QueryRow(`SELECT id, marker_id, old_coords, new_coords, transplanted_date, notes, created_at FROM transplants WHERE id=?`, id).
+		Scan(&t.ID, &t.MarkerID, &t.OldCoords, &t.NewCoords, &t.TransplantedDate, &t.Notes, &t.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
 
 func (d *DB) GetTransplants(markerID int64) ([]Transplant, error) {
 	rows, err := d.Query(
@@ -684,6 +739,16 @@ func (d *DB) CreateTransplant(markerID int64, oldCoords, newCoords, date, notes 
 }
 
 // ── Weather ───────────────────────────────────────────────────
+
+func (d *DB) GetWeatherRecord(id int64) (*Weather, error) {
+	var w Weather
+	err := d.QueryRow(`SELECT id, plot_id, date, rainfall_mm, temp_high_c, temp_low_c, wind_speed_kmh, wind_dir, notes, created_at FROM weather WHERE id=?`, id).
+		Scan(&w.ID, &w.PlotID, &w.Date, &w.RainfallMM, &w.TempHighC, &w.TempLowC, &w.WindSpeedKMH, &w.WindDir, &w.Notes, &w.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &w, nil
+}
 
 func (d *DB) GetWeather(plotID int64) ([]Weather, error) {
 	rows, err := d.Query(`SELECT id, plot_id, date, rainfall_mm, temp_high_c, temp_low_c, wind_speed_kmh, wind_dir, notes, created_at FROM weather WHERE plot_id=? ORDER BY date DESC`, plotID)
@@ -776,6 +841,16 @@ func (d *DB) RemoveGroupMember(markerID int64) error {
 }
 
 // ── Group Harvests ────────────────────────────────────────────
+
+func (d *DB) GetGroupHarvest(id int64) (*GroupHarvest, error) {
+	var h GroupHarvest
+	err := d.QueryRow(`SELECT id, group_id, date, weight_grams, notes, created_at FROM group_harvests WHERE id=?`, id).
+		Scan(&h.ID, &h.GroupID, &h.Date, &h.WeightGrams, &h.Notes, &h.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &h, nil
+}
 
 func (d *DB) GetGroupHarvests(groupID int64) ([]GroupHarvest, error) {
 	rows, err := d.Query(`SELECT id, group_id, date, weight_grams, notes, created_at FROM group_harvests WHERE group_id=? ORDER BY date DESC`, groupID)

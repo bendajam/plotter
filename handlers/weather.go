@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"plotter/db"
 )
 
 func (h *Handler) ListWeather(w http.ResponseWriter, r *http.Request) {
@@ -24,6 +25,14 @@ func (h *Handler) ListWeather(w http.ResponseWriter, r *http.Request) {
 	records, err := h.db.GetWeather(plotID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if h.isJSON(r) {
+		if records == nil {
+			records = []db.Weather{}
+		}
+		writeJSON(w, http.StatusOK, records)
 		return
 	}
 
@@ -74,9 +83,19 @@ func (h *Handler) CreateWeather(w http.ResponseWriter, r *http.Request) {
 	windDir := strings.TrimSpace(r.FormValue("wind_dir"))
 	notes := strings.TrimSpace(r.FormValue("notes"))
 
-	_, err = h.db.CreateWeather(plotID, date, rainfall, tempHigh, tempLow, windSpeed, windDir, notes)
+	weatherID, err := h.db.CreateWeather(plotID, date, rainfall, tempHigh, tempLow, windSpeed, windDir, notes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if h.isJSON(r) {
+		record, err := h.db.GetWeatherRecord(weatherID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusCreated, record)
 		return
 	}
 
@@ -100,6 +119,10 @@ func (h *Handler) DeleteWeather(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.db.DeleteWeather(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if h.isJSON(r) {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	w.WriteHeader(http.StatusOK)

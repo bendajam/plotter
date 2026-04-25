@@ -7,7 +7,14 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"plotter/db"
 )
+
+type plantGroupResponse struct {
+	Group    *db.PlantGroup    `json:"group"`
+	Members  []db.Marker       `json:"members"`
+	Harvests []db.GroupHarvest  `json:"harvests"`
+}
 
 func (h *Handler) UpsertTaxonomy(w http.ResponseWriter, r *http.Request) {
 	markerID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -23,6 +30,10 @@ func (h *Handler) UpsertTaxonomy(w http.ResponseWriter, r *http.Request) {
 	tax, err := h.db.UpsertTaxonomy(markerID, genus, species, cultivar)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if h.isJSON(r) {
+		writeJSON(w, http.StatusOK, tax)
 		return
 	}
 	h.renderPartial(w, r, "taxonomy", map[string]interface{}{
@@ -49,8 +60,19 @@ func (h *Handler) CreateHarvest(w http.ResponseWriter, r *http.Request) {
 	}
 	notes := strings.TrimSpace(r.FormValue("notes"))
 
-	if _, err := h.db.CreateHarvest(markerID, date, weightGrams, notes); err != nil {
+	harvestID, err := h.db.CreateHarvest(markerID, date, weightGrams, notes)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if h.isJSON(r) {
+		harvest, err := h.db.GetHarvest(harvestID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusCreated, harvest)
 		return
 	}
 
@@ -74,6 +96,10 @@ func (h *Handler) DeleteHarvest(w http.ResponseWriter, r *http.Request) {
 	markerID, err := h.db.DeleteHarvest(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if h.isJSON(r) {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	harvests, _ := h.db.GetHarvests(markerID)
@@ -160,6 +186,10 @@ func (h *Handler) DeletePlantGroup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if h.isJSON(r) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(`<p class="hint">Group deleted. Click a marker to get started.</p>`))
 }
@@ -219,8 +249,18 @@ func (h *Handler) CreateGroupHarvest(w http.ResponseWriter, r *http.Request) {
 	}
 	notes := strings.TrimSpace(r.FormValue("notes"))
 
-	if _, err := h.db.CreateGroupHarvest(groupID, date, weightGrams, notes); err != nil {
+	harvestID, err := h.db.CreateGroupHarvest(groupID, date, weightGrams, notes)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if h.isJSON(r) {
+		harvest, err := h.db.GetGroupHarvest(harvestID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusCreated, harvest)
 		return
 	}
 	harvests, _ := h.db.GetGroupHarvests(groupID)
@@ -241,6 +281,10 @@ func (h *Handler) DeleteGroupHarvest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if h.isJSON(r) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	harvests, _ := h.db.GetGroupHarvests(groupID)
 	h.renderPartial(w, r, "group_harvest_list", map[string]interface{}{
 		"Harvests": harvests,
@@ -256,6 +300,16 @@ func (h *Handler) loadAndRenderGroup(w http.ResponseWriter, r *http.Request, gro
 	}
 	members, _ := h.db.GetGroupMarkers(groupID)
 	harvests, _ := h.db.GetGroupHarvests(groupID)
+	if h.isJSON(r) {
+		if members == nil {
+			members = []db.Marker{}
+		}
+		if harvests == nil {
+			harvests = []db.GroupHarvest{}
+		}
+		writeJSON(w, http.StatusOK, plantGroupResponse{Group: group, Members: members, Harvests: harvests})
+		return
+	}
 	h.renderPartial(w, r, "plant_group", map[string]interface{}{
 		"Group":    group,
 		"Members":  members,
