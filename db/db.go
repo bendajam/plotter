@@ -15,7 +15,8 @@ type Plot struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
 	Address   string    `json:"address"`
-	ImagePath string    `json:"image_path"`
+	ImagePath string    `json:"-"`
+	ImageURL  string    `json:"image_url"` // "/uploads/" + ImagePath — ready to use as a URL
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -319,6 +320,7 @@ func (d *DB) GetPlots() ([]Plot, error) {
 	for rows.Next() {
 		var p Plot
 		rows.Scan(&p.ID, &p.Name, &p.Address, &p.ImagePath, &p.CreatedAt)
+		p.ImageURL = "/uploads/" + p.ImagePath
 		out = append(out, p)
 	}
 	return out, rows.Err()
@@ -331,6 +333,7 @@ func (d *DB) GetPlot(id int64) (*Plot, error) {
 	if err != nil {
 		return nil, err
 	}
+	p.ImageURL = "/uploads/" + p.ImagePath
 	return &p, nil
 }
 
