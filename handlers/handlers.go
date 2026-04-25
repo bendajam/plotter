@@ -160,6 +160,10 @@ func (h *Handler) isJSON(r *http.Request) bool {
 	return strings.Contains(r.Header.Get("Accept"), "application/json")
 }
 
+func isJSONBody(r *http.Request) bool {
+	return strings.Contains(r.Header.Get("Content-Type"), "application/json")
+}
+
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

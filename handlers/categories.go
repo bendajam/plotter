@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -26,10 +27,24 @@ func (h *Handler) ListCategories(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	name := strings.TrimSpace(r.FormValue("name"))
-	color := strings.TrimSpace(r.FormValue("color"))
-	catType := r.FormValue("type")
+	var name, color, catType string
+	if isJSONBody(r) {
+		var req struct {
+			Name  string `json:"name"`
+			Color string `json:"color"`
+			Type  string `json:"type"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+		name, color, catType = req.Name, req.Color, req.Type
+	} else {
+		r.ParseForm()
+		name = strings.TrimSpace(r.FormValue("name"))
+		color = strings.TrimSpace(r.FormValue("color"))
+		catType = r.FormValue("type")
+	}
 	if name == "" {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return
@@ -68,10 +83,24 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	r.ParseForm()
-	name := strings.TrimSpace(r.FormValue("name"))
-	color := strings.TrimSpace(r.FormValue("color"))
-	catType := r.FormValue("type")
+	var name, color, catType string
+	if isJSONBody(r) {
+		var req struct {
+			Name  string `json:"name"`
+			Color string `json:"color"`
+			Type  string `json:"type"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+		name, color, catType = req.Name, req.Color, req.Type
+	} else {
+		r.ParseForm()
+		name = strings.TrimSpace(r.FormValue("name"))
+		color = strings.TrimSpace(r.FormValue("color"))
+		catType = r.FormValue("type")
+	}
 	if name == "" {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return

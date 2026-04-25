@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -145,6 +146,43 @@ func (h *Handler) CreatePlantGroup(w http.ResponseWriter, r *http.Request) {
 		h.db.SetMarkersGroup(groupID, markerIDs)
 	}
 
+	h.loadAndRenderGroup(w, r, groupID)
+}
+
+// CreatePlantGroupFromBody handles POST /plant-groups with a JSON body.
+// Used by the Android client which sends {name, marker_ids} without a plot ID
+// in the URL; the plot is derived from the first marker.
+func (h *Handler) CreatePlantGroupFromBody(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name      string  `json:"name"`
+		MarkerIDs []int64 `json:"marker_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if req.Name == "" {
+		http.Error(w, "name required", http.StatusBadRequest)
+		return
+	}
+	if len(req.MarkerIDs) == 0 {
+		http.Error(w, "marker_ids required", http.StatusBadRequest)
+		return
+	}
+	first, err := h.db.GetMarker(req.MarkerIDs[0])
+	if err != nil {
+		http.Error(w, "marker not found", http.StatusNotFound)
+		return
+	}
+	groupID, err := h.db.CreatePlantGroup(first.PlotID, req.Name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := h.db.SetMarkersGroup(groupID, req.MarkerIDs); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	h.loadAndRenderGroup(w, r, groupID)
 }
 
