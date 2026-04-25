@@ -14,6 +14,7 @@ import (
 	"plotter/db"
 )
 
+
 func (h *Handler) CreateMarker(w http.ResponseWriter, r *http.Request) {
 	plotID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
@@ -65,6 +66,11 @@ func (h *Handler) CreateMarker(w http.ResponseWriter, r *http.Request) {
 	color := marker.CategoryColor
 	if color == "" {
 		color = "#64748b"
+	}
+
+	if h.isJSON(r) {
+		writeJSON(w, http.StatusCreated, marker)
+		return
 	}
 
 	w.Header().Set("HX-Trigger", fmt.Sprintf(
@@ -138,6 +144,30 @@ func (h *Handler) ViewMarker(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if h.isJSON(r) {
+		entries, _ := data["Entries"].([]db.MarkerEntry)
+		transplants, _ := data["Transplants"].([]db.Transplant)
+		harvests, _ := data["Harvests"].([]db.Harvest)
+		if entries == nil {
+			entries = []db.MarkerEntry{}
+		}
+		if transplants == nil {
+			transplants = []db.Transplant{}
+		}
+		if harvests == nil {
+			harvests = []db.Harvest{}
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"marker":      marker,
+			"entries":     entries,
+			"transplants": transplants,
+			"taxonomy":    data["Taxonomy"],
+			"harvests":    harvests,
+			"group":       data["Group"],
+		})
+		return
+	}
+
 	if r.Header.Get("HX-Request") == "true" {
 		h.renderPartial(w, r, "marker_detail", data)
 		return
@@ -183,6 +213,16 @@ func (h *Handler) CreateEntry(w http.ResponseWriter, r *http.Request) {
 			}
 			file.Close()
 		}
+	}
+
+	if h.isJSON(r) {
+		entry, err := h.db.GetEntry(entryID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusCreated, entry)
+		return
 	}
 
 	entries, err := h.db.GetEntriesWithImages(markerID)
@@ -277,6 +317,16 @@ func (h *Handler) UpdateMarker(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.db.UpdateMarker(id, label, endDate, plantedDate, parseOptID("category_id"), parseOptID("layer_id")); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if h.isJSON(r) {
+		marker, err := h.db.GetMarker(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, marker)
 		return
 	}
 
@@ -376,8 +426,19 @@ func (h *Handler) CreateTransplant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := h.db.CreateTransplant(id, marker.Coords, newCoords, date, notes); err != nil {
+	transplantID, err := h.db.CreateTransplant(id, marker.Coords, newCoords, date, notes)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if h.isJSON(r) {
+		transplant, err := h.db.GetTransplant(transplantID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusCreated, transplant)
 		return
 	}
 
@@ -406,6 +467,10 @@ func (h *Handler) DeleteMarker(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.db.DeleteMarker(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if h.isJSON(r) {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	w.WriteHeader(http.StatusOK)

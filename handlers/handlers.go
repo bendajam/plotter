@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"math"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"plotter/db"
 )
@@ -152,6 +154,16 @@ func funcMap() template.FuncMap {
 			return fmt.Sprintf("%.0f g", total)
 		},
 	}
+}
+
+func (h *Handler) isJSON(r *http.Request) bool {
+	return strings.Contains(r.Header.Get("Accept"), "application/json")
+}
+
+func writeJSON(w http.ResponseWriter, status int, v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(v)
 }
 
 func (h *Handler) render(w http.ResponseWriter, r *http.Request, name string, data interface{}) {

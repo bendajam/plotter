@@ -46,6 +46,7 @@ func main() {
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
 
 	r.Get("/", h.ListPlots)
+	r.Get("/plots", h.ListPlotsJSON)
 	r.Get("/plots/new", h.NewPlot)
 	r.Post("/plots", h.CreatePlot)
 	r.Get("/plots/{id}", h.ViewPlot)

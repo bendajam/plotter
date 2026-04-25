@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"plotter/db"
 )
 
 func (h *Handler) ListPlots(w http.ResponseWriter, r *http.Request) {
@@ -21,9 +22,28 @@ func (h *Handler) ListPlots(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if h.isJSON(r) {
+		if plots == nil {
+			plots = []db.Plot{}
+		}
+		writeJSON(w, http.StatusOK, plots)
+		return
+	}
 	h.render(w, r, "index", map[string]interface{}{
 		"Plots": plots,
 	})
+}
+
+func (h *Handler) ListPlotsJSON(w http.ResponseWriter, r *http.Request) {
+	plots, err := h.db.GetPlots()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if plots == nil {
+		plots = []db.Plot{}
+	}
+	writeJSON(w, http.StatusOK, plots)
 }
 
 func (h *Handler) NewPlot(w http.ResponseWriter, r *http.Request) {
@@ -68,6 +88,16 @@ func (h *Handler) CreatePlot(w http.ResponseWriter, r *http.Request) {
 	id, err := h.db.CreatePlot(name, address, "plots/"+filename)
 	if err != nil {
 		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if h.isJSON(r) {
+		plot, err := h.db.GetPlot(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusCreated, plot)
 		return
 	}
 
@@ -137,6 +167,25 @@ func (h *Handler) ViewPlot(w http.ResponseWriter, r *http.Request) {
 		}
 		jmarkers[i] = markerJSON{m.ID, m.Shape, m.Coords, m.Label, catID, layerID, color, m.EndDate, m.PlantedDate}
 	}
+	if h.isJSON(r) {
+		if markers == nil {
+			markers = []db.Marker{}
+		}
+		if categories == nil {
+			categories = []db.Category{}
+		}
+		if layers == nil {
+			layers = []db.Layer{}
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"plot":       plot,
+			"markers":    markers,
+			"categories": categories,
+			"layers":     layers,
+		})
+		return
+	}
+
 	jbytes, _ := json.Marshal(jmarkers)
 
 	h.render(w, r, "plot", map[string]interface{}{
@@ -157,6 +206,10 @@ func (h *Handler) DeletePlot(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.db.DeletePlot(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if h.isJSON(r) {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	w.Header().Set("HX-Redirect", "/")
