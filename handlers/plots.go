@@ -75,7 +75,7 @@ func (h *Handler) CreatePlot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
-	savePath := filepath.Join("uploads", "plots", filename)
+	savePath := filepath.Join(h.uploadDir, "plots", filename)
 
 	out, err := os.Create(savePath)
 	if err != nil {

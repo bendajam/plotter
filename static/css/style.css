@@ -475,7 +475,7 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 /* Entry images grid */
 .entry-images { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .entry-image-item { position: relative; width: 90px; }
-.entry-image-item img { width: 90px; height: 70px; object-fit: cover; border-radius: 5px; display: block; }
+.entry-image-item img { width: 90px; height: 70px; object-fit: cover; border-radius: 5px; display: block; cursor: zoom-in; }
 .entry-image-item .entry-caption { font-size: 0.7rem; color: #64748b; margin: 2px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .entry-img-del { position: absolute; top: 2px; right: 2px; font-size: 0.65rem; padding: 1px 4px; line-height: 1; }
 
@@ -598,3 +598,10 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
   outline: none;
   border-color: #166534;
 }
+
+/* Photo lightbox */
+.photo-lightbox { padding: 0; border: none; border-radius: 10px; background: transparent; max-width: 90vw; max-height: 90vh; }
+.photo-lightbox::backdrop { background: rgba(0,0,0,0.75); }
+.photo-lightbox img { display: block; max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: 8px; }
+.lightbox-close { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 1rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.lightbox-close:hover { background: rgba(0,0,0,0.8); }

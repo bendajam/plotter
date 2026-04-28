@@ -31,9 +31,10 @@ func templateRoot() string {
 type Handler struct {
 	db        *db.DB
 	templates map[string]*template.Template
+	uploadDir string
 }
 
-func New(database *db.DB) (*Handler, error) {
+func New(database *db.DB, uploadDir string) (*Handler, error) {
 	tmplDir := filepath.Join(templateRoot(), "templates")
 
 	layout := filepath.Join(tmplDir, "layout.html")
@@ -96,7 +97,7 @@ func New(database *db.DB) (*Handler, error) {
 		templates[name] = t
 	}
 
-	return &Handler{db: database, templates: templates}, nil
+	return &Handler{db: database, templates: templates, uploadDir: uploadDir}, nil
 }
 
 func funcMap() template.FuncMap {

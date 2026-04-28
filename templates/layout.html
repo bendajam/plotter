@@ -18,5 +18,33 @@
   <main>
     {{block "content" .}}{{end}}
   </main>
+
+  <dialog id="photo-lightbox" class="photo-lightbox">
+    <img id="lightbox-img" src="" alt="">
+    <button id="lightbox-close" class="lightbox-close" aria-label="Close">&#x2715;</button>
+  </dialog>
+
+  <script>
+    (function () {
+      var dlg = document.getElementById('photo-lightbox');
+      var img = document.getElementById('lightbox-img');
+
+      document.addEventListener('click', function (e) {
+        var target = e.target.closest('.entry-image-item img');
+        if (!target) return;
+        img.src = target.src;
+        img.alt = target.alt;
+        dlg.showModal();
+      });
+
+      document.getElementById('lightbox-close').addEventListener('click', function () {
+        dlg.close();
+      });
+
+      dlg.addEventListener('click', function (e) {
+        if (e.target === dlg) dlg.close();
+      });
+    })();
+  </script>
 </body>
 </html>

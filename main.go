@@ -33,7 +33,7 @@ func main() {
 	}
 	defer database.Close()
 
-	h, err := handlers.New(database)
+	h, err := handlers.New(database, uploadDir)
 	if err != nil {
 		log.Fatal("handlers init:", err)
 	}
