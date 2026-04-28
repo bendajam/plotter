@@ -42,7 +42,7 @@ func newHandler(t *testing.T) (*handlers.Handler, *db.DB) {
 	}
 	t.Cleanup(func() { database.Close() })
 
-	h, err := handlers.New(database)
+	h, err := handlers.New(database, t.TempDir())
 	if err != nil {
 		t.Fatalf("handlers.New: %v", err)
 	}

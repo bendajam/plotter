@@ -243,7 +243,7 @@ func (h *Handler) CreateEntry(w http.ResponseWriter, r *http.Request) {
 			}
 			ext := strings.ToLower(filepath.Ext(fh.Filename))
 			filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
-			savePath := filepath.Join("uploads", "markers", filename)
+			savePath := filepath.Join(h.uploadDir, "markers", filename)
 			if out, err := os.Create(savePath); err == nil {
 				io.Copy(out, file)
 				out.Close()
@@ -294,7 +294,7 @@ func (h *Handler) AddEntryImages(w http.ResponseWriter, r *http.Request) {
 		}
 		ext := strings.ToLower(filepath.Ext(fh.Filename))
 		filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
-		savePath := filepath.Join("uploads", "markers", filename)
+		savePath := filepath.Join(h.uploadDir, "markers", filename)
 		if out, err := os.Create(savePath); err == nil {
 			io.Copy(out, file)
 			out.Close()
