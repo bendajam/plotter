@@ -217,6 +217,169 @@ func (h *Handler) ListPlotMarkers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, markers)
 }
 
+func (h *Handler) RemapPage(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	plot, err := h.db.GetPlot(id)
+	if err != nil {
+		http.Error(w, "plot not found", http.StatusNotFound)
+		return
+	}
+	markers, err := h.db.GetMarkersForRemap(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	hasBackup, _ := h.db.HasRemapBackup(id)
+
+	type mj struct {
+		ID     int64  `json:"id"`
+		Shape  string `json:"shape"`
+		Coords string `json:"coords"`
+	}
+	mjs := make([]mj, len(markers))
+	for i, m := range markers {
+		mjs[i] = mj{m.ID, m.Shape, m.Coords}
+	}
+	jbytes, _ := json.Marshal(mjs)
+
+	h.render(w, r, "remap", map[string]interface{}{
+		"Plot":        plot,
+		"MarkersJSON": template.JS(jbytes),
+		"HasBackup":   hasBackup,
+	})
+}
+
+func (h *Handler) UploadPlotImage(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(32 << 20)
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		http.Error(w, "image required: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".gif" && ext != ".webp" {
+		http.Error(w, "unsupported image format", http.StatusBadRequest)
+		return
+	}
+
+	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+	savePath := filepath.Join(h.uploadDir, "plots", filename)
+	out, err := os.Create(savePath)
+	if err != nil {
+		http.Error(w, "failed to save image", http.StatusInternalServerError)
+		return
+	}
+	defer out.Close()
+	io.Copy(out, file)
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"image_path": "plots/" + filename,
+		"image_url":  "/uploads/plots/" + filename,
+	})
+}
+
+func (h *Handler) RemapPlot(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		NewImagePath string `json:"new_image_path"`
+		SrcPoints    [4]Pt  `json:"src_points"`
+		DstPoints    [4]Pt  `json:"dst_points"`
+		CapturedDate string `json:"captured_date"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if req.NewImagePath == "" {
+		http.Error(w, "new_image_path required", http.StatusBadRequest)
+		return
+	}
+
+	H, err := computeHomography(req.SrcPoints, req.DstPoints)
+	if err != nil {
+		http.Error(w, "homography error: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	markers, err := h.db.GetMarkersForRemap(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	newCoords := make(map[int64]string, len(markers))
+	for _, m := range markers {
+		nc, err := transformCoords(H, m.Shape, m.Coords)
+		if err != nil {
+			nc = m.Coords
+		}
+		newCoords[m.ID] = nc
+	}
+
+	if err := h.db.SaveRemapBackup(id); err != nil {
+		http.Error(w, "backup failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := h.db.ApplyRemap(id, req.NewImagePath, newCoords); err != nil {
+		http.Error(w, "remap failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	capturedDate := req.CapturedDate
+	if capturedDate == "" {
+		capturedDate = time.Now().Format("2006-01-02")
+	}
+	h.db.AddPlotImage(id, req.NewImagePath, capturedDate)
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"redirect": fmt.Sprintf("/plots/%d", id),
+	})
+}
+
+func (h *Handler) UndoRemap(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	if err := h.db.UndoRemap(id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, fmt.Sprintf("/plots/%d", id), http.StatusSeeOther)
+}
+
+func (h *Handler) GetPlotImage(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	date := r.URL.Query().Get("date")
+	if date == "" {
+		date = time.Now().Format("2006-01-02")
+	}
+	imagePath, err := h.db.GetImageForDate(id, date)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{
+		"image_url": "/uploads/" + imagePath,
+	})
+}
+
 func (h *Handler) DeletePlot(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {

@@ -109,11 +109,17 @@
 
   <section class="section">
     <h2>Notes</h2>
-    <div id="entries-list">
+    <div id="entries-list" class="entries-container">
       {{range .Entries}}
       <div class="entry-card" id="entry-{{.ID}}">
         <div class="entry-header">
           <strong class="entry-date">{{.Date}}</strong>
+          <button class="btn-icon btn-danger entry-del"
+            hx-delete="/entries/{{.ID}}"
+            hx-confirm="Delete this note and all its photos?"
+            hx-target="closest .entries-container"
+            hx-swap="innerHTML"
+            title="Delete note">&#x2715;</button>
         </div>
         {{if .Notes}}<p class="entry-notes">{{.Notes}}</p>{{end}}
 

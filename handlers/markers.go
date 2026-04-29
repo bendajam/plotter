@@ -225,6 +225,8 @@ func (h *Handler) CreateEntry(w http.ResponseWriter, r *http.Request) {
 	}
 	if date == "" {
 		date = time.Now().Format("2006-01-02")
+	} else if len(date) > 10 {
+		date = date[:10]
 	}
 
 	entryID, err := h.db.CreateEntry(markerID, date, notes)
@@ -329,6 +331,29 @@ func (h *Handler) DeleteEntryImage(w http.ResponseWriter, r *http.Request) {
 	h.renderPartial(w, r, "entry_images", map[string]interface{}{
 		"Images":  images,
 		"EntryID": entryID,
+	})
+}
+
+func (h *Handler) DeleteEntry(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	markerID, err := h.db.DeleteEntry(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	entries, err := h.db.GetEntriesWithImages(markerID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	h.renderPartial(w, r, "entry_item", map[string]interface{}{
+		"Entries":  entries,
+		"MarkerID": markerID,
+		"Today":    time.Now().Format("2006-01-02"),
 	})
 }
 

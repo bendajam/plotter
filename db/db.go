@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -290,6 +291,29 @@ func Init(path string) (*DB, error) {
 		v = 9
 	}
 
+	if v < 10 {
+		// Photo remap: backup columns for one-step undo.
+		sqldb.Exec(`ALTER TABLE plots ADD COLUMN prev_image_path TEXT`)
+		sqldb.Exec(`ALTER TABLE markers ADD COLUMN coords_backup TEXT`)
+		sqldb.Exec(`UPDATE _version SET v = 10`)
+		v = 10
+	}
+
+	if v < 11 {
+		// Date-indexed plot photos for slideshow.
+		sqldb.Exec(`CREATE TABLE IF NOT EXISTS plot_images (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE,
+			image_path TEXT NOT NULL,
+			captured_date DATE NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`)
+		// Seed each plot's current image as its initial entry (today).
+		sqldb.Exec(`INSERT INTO plot_images (plot_id, image_path, captured_date)
+			SELECT id, image_path, date('now') FROM plots`)
+		sqldb.Exec(`UPDATE _version SET v = 11`)
+		v = 11
+	}
+
 	// Idempotent seeds
 	for _, row := range []struct{ name, color, catType string }{
 		{"Tree", "#166534", "plant"}, {"Bush", "#15803d", "plant"}, {"Flower", "#be185d", "plant"},
@@ -348,6 +372,99 @@ func (d *DB) CreatePlot(name, address, imagePath string) (int64, error) {
 func (d *DB) DeletePlot(id int64) error {
 	_, err := d.Exec(`DELETE FROM plots WHERE id = ?`, id)
 	return err
+}
+
+// ── Plot remap ────────────────────────────────────────────────
+
+type MarkerRemap struct {
+	ID     int64
+	Shape  string
+	Coords string
+}
+
+func (d *DB) GetMarkersForRemap(plotID int64) ([]MarkerRemap, error) {
+	rows, err := d.Query(`SELECT id, shape, coords FROM markers WHERE plot_id=? AND deleted_at IS NULL`, plotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []MarkerRemap
+	for rows.Next() {
+		var m MarkerRemap
+		rows.Scan(&m.ID, &m.Shape, &m.Coords)
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+func (d *DB) HasRemapBackup(plotID int64) (bool, error) {
+	var s sql.NullString
+	err := d.QueryRow(`SELECT prev_image_path FROM plots WHERE id=?`, plotID).Scan(&s)
+	return s.Valid && s.String != "", err
+}
+
+func (d *DB) SaveRemapBackup(plotID int64) error {
+	if _, err := d.Exec(`UPDATE plots SET prev_image_path=image_path WHERE id=?`, plotID); err != nil {
+		return err
+	}
+	_, err := d.Exec(`UPDATE markers SET coords_backup=coords WHERE plot_id=? AND deleted_at IS NULL`, plotID)
+	return err
+}
+
+func (d *DB) ApplyRemap(plotID int64, newImagePath string, coords map[int64]string) error {
+	tx, err := d.Begin()
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE plots SET image_path=? WHERE id=?`, newImagePath, plotID); err != nil {
+		tx.Rollback()
+		return err
+	}
+	for id, c := range coords {
+		if _, err := tx.Exec(`UPDATE markers SET coords=? WHERE id=?`, c, id); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (d *DB) UndoRemap(plotID int64) error {
+	var prev sql.NullString
+	if err := d.QueryRow(`SELECT prev_image_path FROM plots WHERE id=?`, plotID).Scan(&prev); err != nil {
+		return err
+	}
+	if !prev.Valid || prev.String == "" {
+		return fmt.Errorf("no remap backup found for this plot")
+	}
+	tx, err := d.Begin()
+	if err != nil {
+		return err
+	}
+	tx.Exec(`UPDATE plots SET image_path=prev_image_path, prev_image_path=NULL WHERE id=?`, plotID)
+	tx.Exec(`UPDATE markers SET coords=coords_backup WHERE plot_id=? AND coords_backup IS NOT NULL AND deleted_at IS NULL`, plotID)
+	return tx.Commit()
+}
+
+func (d *DB) AddPlotImage(plotID int64, imagePath, capturedDate string) error {
+	_, err := d.Exec(`INSERT INTO plot_images (plot_id, image_path, captured_date) VALUES (?, ?, ?)`,
+		plotID, imagePath, capturedDate)
+	return err
+}
+
+// GetImageForDate returns the image_path of the most recent plot photo on or before the given date.
+// Falls back to the plot's current image_path if no dated entry exists.
+func (d *DB) GetImageForDate(plotID int64, date string) (string, error) {
+	var path string
+	err := d.QueryRow(`
+		SELECT image_path FROM plot_images
+		WHERE plot_id=? AND captured_date <= ?
+		ORDER BY captured_date DESC, id DESC LIMIT 1`, plotID, date).Scan(&path)
+	if err == sql.ErrNoRows {
+		// Fall back to current image
+		err = d.QueryRow(`SELECT image_path FROM plots WHERE id=?`, plotID).Scan(&path)
+	}
+	return path, err
 }
 
 // ── Categories ────────────────────────────────────────────────
@@ -539,7 +656,7 @@ func (d *DB) DeleteMarker(id int64) error {
 // ── Marker Entries ────────────────────────────────────────────
 
 func (d *DB) GetEntries(markerID int64) ([]MarkerEntry, error) {
-	rows, err := d.Query(`SELECT id, marker_id, date, notes, created_at FROM marker_entries WHERE marker_id=? ORDER BY date DESC`, markerID)
+	rows, err := d.Query(`SELECT id, marker_id, substr(date,1,10), notes, created_at FROM marker_entries WHERE marker_id=? ORDER BY date DESC, id DESC`, markerID)
 	if err != nil {
 		return nil, err
 	}
@@ -574,6 +691,16 @@ func (d *DB) CreateEntry(markerID int64, date, notes string) (int64, error) {
 		return 0, err
 	}
 	return res.LastInsertId()
+}
+
+func (d *DB) DeleteEntry(id int64) (int64, error) {
+	var markerID int64
+	err := d.QueryRow(`SELECT marker_id FROM marker_entries WHERE id=?`, id).Scan(&markerID)
+	if err != nil {
+		return 0, err
+	}
+	_, err = d.Exec(`DELETE FROM marker_entries WHERE id=?`, id)
+	return markerID, err
 }
 
 func (d *DB) GetEntry(id int64) (*MarkerEntry, error) {
