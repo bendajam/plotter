@@ -154,6 +154,10 @@ class PlotCanvas {
     this._render();
   }
 
+  setImage(url) {
+    this._loadImage(url);
+  }
+
   // Path tool methods
   finishPath() {
     if (this.pathPoints.length < 2) {

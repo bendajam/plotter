@@ -1,0 +1,81 @@
+{{template "layout.html" .}}
+{{define "content"}}
+{{$plot := .Plot}}
+<div class="remap-page">
+  <div class="page-header">
+    <div>
+      <h1>Update Photo — {{$plot.Name}}</h1>
+      <p class="address">Select 4 reference points to realign your markers to a new photo</p>
+    </div>
+    <div class="plot-actions">
+      {{if .HasBackup}}
+      <form action="/plots/{{$plot.ID}}/remap/undo" method="post" style="display:inline">
+        <button type="submit" class="btn btn-secondary"
+          onclick="return confirm('Restore the previous photo and marker positions?')">
+          Undo Last Remap
+        </button>
+      </form>
+      {{end}}
+      <a href="/plots/{{$plot.ID}}" class="btn btn-secondary">← Back to Plot</a>
+    </div>
+  </div>
+
+  <!-- Stage 1: Upload -->
+  <div id="stage-upload" class="remap-stage section">
+    <h2>Step 1: Upload New Plot Photo</h2>
+    <p class="hint">Upload a clear overhead photo of your plot. Once uploaded, you'll align it to the current photo using 4 reference points.</p>
+    <form id="upload-form" class="upload-form">
+      <input type="file" id="image-file" name="image" accept="image/jpeg,image/png,image/webp,image/gif" required>
+      <label for="captured-date" style="font-size:.875rem;color:var(--text-muted)">Photo date (optional)</label>
+      <input type="date" id="captured-date" name="captured_date">
+      <button type="submit" class="btn btn-primary">Upload &amp; Continue →</button>
+    </form>
+    <div id="upload-progress" style="display:none" class="hint">Uploading…</div>
+    <div id="upload-error" class="remap-error" style="display:none"></div>
+  </div>
+
+  <!-- Stage 2: Point picking + preview -->
+  <div id="stage-pick" class="remap-stage" style="display:none">
+    <h2>Step 2: Place 4 Reference Points</h2>
+    <p class="hint">Click the <strong>same 4 landmarks</strong> (path corners, bed edges, fence posts) on each photo. Drag points to adjust. Spread them widely for best accuracy.</p>
+
+    <div class="remap-panels">
+      <div class="remap-panel">
+        <div class="remap-panel-header">
+          <h3>New Photo</h3>
+          <span id="new-count" class="point-badge">0 / 4</span>
+        </div>
+        <div class="remap-canvas-wrap" id="new-canvas-wrap">
+          <canvas id="new-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="remap-panel">
+        <div class="remap-panel-header">
+          <h3>Current Plot</h3>
+          <span id="old-count" class="point-badge">0 / 4</span>
+        </div>
+        <div class="remap-canvas-wrap" id="old-canvas-wrap">
+          <canvas id="old-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div id="remap-status" class="remap-status">Place 4 points on each photo.</div>
+
+    <div class="remap-actions">
+      <button id="clear-btn" class="btn btn-secondary">Clear All Points</button>
+      <button id="restart-btn" class="btn btn-secondary">← Upload Different Photo</button>
+      <button id="apply-btn" class="btn btn-primary" disabled>Apply Remap</button>
+    </div>
+    <div id="remap-error" class="remap-error" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+  var PLOT_ID    = {{$plot.ID}};
+  var OLD_IMAGE  = "{{$plot.ImageURL}}";
+  var MARKERS    = {{.MarkersJSON}};
+</script>
+<script src="/static/js/remap.js"></script>
+{{end}}

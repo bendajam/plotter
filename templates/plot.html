@@ -9,6 +9,7 @@
     </div>
     <div class="plot-actions">
       <a href="/plots/{{$plot.ID}}/weather" class="btn btn-secondary">Weather Log</a>
+      <a href="/plots/{{$plot.ID}}/remap" class="btn btn-secondary">Update Photo</a>
       <button hx-delete="/plots/{{$plot.ID}}" hx-confirm="Delete this plot and all its data?"
         class="btn btn-danger">Delete Plot</button>
     </div>
@@ -340,6 +341,7 @@
 
 <script src="/static/js/canvas.js"></script>
 <script>
+  const PLOT_ID = {{$plot.ID}};
   const plotCanvas = new PlotCanvas(
     'plot-canvas',
     '/uploads/{{$plot.ImagePath}}',
@@ -413,12 +415,19 @@
     const val = document.getElementById('date-filter').value;
     plotCanvas.setDateFilter(val);
     document.getElementById('date-filter-clear').style.display = val ? '' : 'none';
+    if (val) {
+      fetch('/plots/' + PLOT_ID + '/image?date=' + encodeURIComponent(val))
+        .then(r => r.json())
+        .then(d => { if (d.image_url) plotCanvas.setImage(d.image_url); })
+        .catch(() => {});
+    }
   }
 
   function clearDateFilter() {
     document.getElementById('date-filter').value = '';
     plotCanvas.setDateFilter('');
     document.getElementById('date-filter-clear').style.display = 'none';
+    plotCanvas.setImage('/uploads/{{$plot.ImagePath}}');
   }
 
   function toggleAll(panelId, attr, on) {

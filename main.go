@@ -51,6 +51,11 @@ func main() {
 	r.Post("/plots", h.CreatePlot)
 	r.Get("/plots/{id}", h.ViewPlot)
 	r.Delete("/plots/{id}", h.DeletePlot)
+	r.Get("/plots/{id}/remap", h.RemapPage)
+	r.Post("/plots/{id}/image-upload", h.UploadPlotImage)
+	r.Post("/plots/{id}/remap", h.RemapPlot)
+	r.Post("/plots/{id}/remap/undo", h.UndoRemap)
+	r.Get("/plots/{id}/image", h.GetPlotImage)
 
 	r.Post("/markers/bulk", h.BulkUpdateMarkers)
 	r.Post("/plots/{id}/markers", h.CreateMarker)
@@ -61,6 +66,7 @@ func main() {
 	r.Post("/markers/{id}/transplants", h.CreateTransplant)
 	r.Delete("/markers/{id}", h.DeleteMarker)
 
+	r.Delete("/entries/{id}", h.DeleteEntry)
 	r.Post("/entries/{id}/images", h.AddEntryImages)
 	r.Delete("/entry-images/{id}", h.DeleteEntryImage)
 
