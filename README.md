@@ -12,14 +12,31 @@ A personal garden history tracker. Drop markers on an image of your plot, log no
 
 ## Features
 
-- **Interactive plot map** — upload a photo of your garden and draw markers (circles, rectangles, polygons) over it with zoom and pan
-- **Marker types** — assign categories (Tree, Bush, Vegetable, Herb, Path, Structure, etc.) and layers (Water, Electrical, Irrigation, etc.) to markers
+### Map & markers
+- **Interactive plot map** — upload a photo of your garden and draw markers (points, circles, lines, rectangles, freehand paths, and area polygons) over it with zoom and pan
+- **Marker types** — assign categories (Tree, Bush, Vegetable, Herb, Path, Structure, etc.) and layers (Water, Electrical, Irrigation, etc.) to each marker
 - **Plant details** — date planted, end date, and scientific taxonomy (genus, species, cultivar) for plant-category markers
-- **Journal entries** — date-stamped notes with photo attachments per marker
-- **Harvest logging** — weight and notes per harvest per marker
-- **Plant groups** — select multiple markers with Shift+click, name them as a group, and log group harvests
 - **Bulk editing** — Shift+select 2+ markers to batch-update category, layer, and dates
-- **Weather log** — rainfall, temperature, wind records per plot
+- **Date filter** — scrub the map to any date to see which plants were active at that point in time; the background photo updates to the closest available photo for that date
+
+### Journal & media
+- **Journal entries** — date-stamped notes with photo attachments per marker, sorted newest-first
+- **Photo lightbox** — click any entry photo to view it full-size
+- **Delete entries** — remove a journal note and all its photos in one action
+
+### Harvests
+- **Harvest logging** — weight and notes per harvest per individual marker
+- **Plant groups** — Shift+select multiple markers to name them as a group and log group-level harvests
+
+### Plot photos & remap
+- **Update plot photo** — upload a new overhead photo at any time and associate it with a capture date
+- **Homography remap** — pick 4 matching landmarks on the old and new photos; all marker coordinates are automatically transformed to the new perspective using a Direct Linear Transform
+- **Live preview** — see where markers will land on the new photo before committing; out-of-bounds markers are highlighted in red
+- **One-step undo** — restore the previous photo and marker positions if the remap looks wrong
+- **Photo slideshow** — the background image tracks the date filter, showing the most recent plot photo taken on or before the selected date
+
+### Infrastructure
+- **Weather log** — rainfall, temperature, and wind records per plot
 - **Filters** — filter the map by category or layer
 - **Categories & layers** — fully editable with custom colors
 
@@ -174,13 +191,14 @@ plotter/
 
 ## Data model
 
-- **Plot** — a garden with an image, name, and address
-- **Marker** — a shape on the plot image (circle, rect, polygon) with optional category, layer, dates, and group
+- **Plot** — a garden with a name, address, and current background image
+- **PlotImage** — a dated snapshot of a plot photo; the map shows the most recent one on or before the active date filter
+- **Marker** — a shape on the plot image (point, circle, line, rect, path, area) with optional category, layer, dates, and group
 - **Category** — typed label with color (`plant` or `other`)
 - **Layer** — infrastructure layer with color
-- **MarkerEntry** — dated journal entry with optional images
+- **MarkerEntry** — dated journal entry with optional photo attachments
 - **PlantTaxonomy** — genus/species/cultivar for a plant marker
-- **Harvest** — weight + notes for an individual marker
+- **Harvest** — weight + notes for an individual marker harvest
 - **PlantGroup** — named collection of markers; supports group harvest logging
 - **Weather** — dated climate records for a plot
 
