@@ -44,6 +44,10 @@ class PlotCanvas {
     this.selectedMarkerId = null;
     this.selectedMarkerIds = new Set();
 
+    // Stack cycling for overlapping entities
+    this._stackSorted = [];
+    this._stackIdx    = 0;
+
     // Zoom & pan (in canvas-buffer pixel space)
     this.zoom  = 1.0;
     this.panX  = 0;
@@ -115,6 +119,8 @@ class PlotCanvas {
   clearGroupSelection() {
     this.selectedMarkerIds.clear();
     this.selectedMarkerId = null;
+    this._stackSorted = [];
+    this._stackIdx    = 0;
     this._render();
     this._notifyMultiSelect();
   }
@@ -384,27 +390,28 @@ class PlotCanvas {
     }
 
     if (this.tool === 'select') {
-      const pos = this._getRelPos(e);
-      const hit = this._hitTest(pos.x, pos.y);
+      const pos     = this._getRelPos(e);
+      const sorted  = this._sortedByDist(pos.x, pos.y);
+      const closest = sorted.length > 0 ? sorted[0] : null;
 
       if (e.shiftKey) {
-        if (hit) {
+        if (closest) {
           if (typeof window.onShiftSelect === 'function') {
             // Group mode: add the marker to the active group and highlight it
-            this.selectedMarkerIds.add(hit.id);
+            this.selectedMarkerIds.add(closest.id);
             this._render();
-            window.onShiftSelect(hit.id);
+            window.onShiftSelect(closest.id);
           } else {
             // Normal multi-select toggle
-            if (this.selectedMarkerIds.has(hit.id)) {
-              this.selectedMarkerIds.delete(hit.id);
-              if (this.selectedMarkerId === hit.id) {
+            if (this.selectedMarkerIds.has(closest.id)) {
+              this.selectedMarkerIds.delete(closest.id);
+              if (this.selectedMarkerId === closest.id) {
                 const remaining = [...this.selectedMarkerIds];
                 this.selectedMarkerId = remaining.length > 0 ? remaining[remaining.length - 1] : null;
               }
             } else {
-              this.selectedMarkerIds.add(hit.id);
-              this.selectedMarkerId = hit.id;
+              this.selectedMarkerIds.add(closest.id);
+              this.selectedMarkerId = closest.id;
             }
             this._render();
             this._notifyMultiSelect();
@@ -413,17 +420,27 @@ class PlotCanvas {
         return;
       }
 
-      // Regular click: leave group mode, clear multi-selection, select single
+      // Regular click: leave group mode, clear multi-selection, cycle stack
       if (typeof window.clearGroupMode === 'function') window.clearGroupMode();
       this.selectedMarkerIds.clear();
-      if (hit) {
-        this.selectedMarkerId = hit.id;
-        this.selectedMarkerIds.add(hit.id);
+      if (sorted.length > 0) {
+        // If clicking in the same area (same top entity), advance through the stack
+        if (this._stackSorted.length > 0 && sorted[0].id === this._stackSorted[0].id) {
+          this._stackIdx = (this._stackIdx + 1) % this._stackSorted.length;
+        } else {
+          this._stackSorted = sorted;
+          this._stackIdx    = 0;
+        }
+        const chosen = this._stackSorted[this._stackIdx];
+        this.selectedMarkerId = chosen.id;
+        this.selectedMarkerIds.add(chosen.id);
         this._render();
         this._notifyMultiSelect();
-        htmx.ajax('GET', `/markers/${hit.id}`, { target: '#marker-detail-panel', swap: 'innerHTML' });
+        htmx.ajax('GET', `/markers/${chosen.id}`, { target: '#marker-detail-panel', swap: 'innerHTML' });
       } else {
         this.selectedMarkerId = null;
+        this._stackSorted = [];
+        this._stackIdx    = 0;
         this._render();
         this._notifyMultiSelect();
         this._startPan(e);
@@ -906,6 +923,54 @@ class PlotCanvas {
       if (this._hitMarker(m, x, y)) return m;
     }
     return null;
+  }
+
+  _markerDist(m, x, y) {
+    const c = m.coords;
+    switch (m.shape) {
+      case 'point':
+        return Math.hypot(x - c.x, y - c.y);
+      case 'circle':
+        return Math.max(0, Math.hypot(x - c.cx, y - c.cy) - c.r);
+      case 'line':
+        return this._distToSeg(x, y, c.x1, c.y1, c.x2, c.y2);
+      case 'rect': {
+        const cx = Math.max(c.x, Math.min(c.x + c.w, x));
+        const cy = Math.max(c.y, Math.min(c.y + c.h, y));
+        return Math.hypot(x - cx, y - cy);
+      }
+      case 'path': {
+        const pts = c.points;
+        if (!pts || pts.length === 0) return Infinity;
+        if (pts.length === 1) return Math.hypot(x - pts[0].x, y - pts[0].y);
+        let minD = Infinity;
+        for (let i = 0; i < pts.length - 1; i++) {
+          minD = Math.min(minD, this._distToSeg(x, y, pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y));
+        }
+        return minD;
+      }
+      case 'area': {
+        const pts = c.points;
+        if (!pts || pts.length < 3) return Infinity;
+        if (pointInPolygon(x, y, pts)) return 0;
+        let minD = Infinity;
+        for (let i = 0; i < pts.length; i++) {
+          const j = (i + 1) % pts.length;
+          minD = Math.min(minD, this._distToSeg(x, y, pts[i].x, pts[i].y, pts[j].x, pts[j].y));
+        }
+        return minD;
+      }
+      default:
+        return Infinity;
+    }
+  }
+
+  _sortedByDist(x, y) {
+    return this.markers
+      .filter(m => this._isVisible(m))
+      .map(m => ({ m, d: this._markerDist(m, x, y) }))
+      .sort((a, b) => a.d - b.d)
+      .map(({ m }) => m);
   }
 
   _hitMarker(m, x, y) {

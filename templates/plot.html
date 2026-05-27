@@ -46,7 +46,7 @@
           onclick="plotCanvas.finishPath()" title="Finish path (Enter)">✓ Done</button>
         <span id="brush-size-control" style="display:none;align-items:center;gap:6px;margin-left:4px">
           <label for="brush-size-input" class="tool-label" style="margin:0">Brush:</label>
-          <input id="brush-size-input" type="range" min="1" max="10" step="1" value="3"
+          <input id="brush-size-input" type="range" min="0.5" max="10" step="0.5" value="3"
             style="width:80px;cursor:pointer"
             oninput="setBrushSize(this.value)"
             title="Brush size">
@@ -147,63 +147,8 @@
           </div>
         </div>
 
-        <!-- Categories dropdown -->
-        <div class="panel-dropdown" id="dd-categories">
-          <button class="panel-btn" onclick="toggleDropdown('dd-categories')">
-            Categories <span class="dd-arrow">▾</span>
-          </button>
-          <div class="dropdown-panel">
-            <div id="cat-manager-list">
-              {{range .Categories}}
-              <div class="cat-row">
-                <form class="cat-edit-form" hx-put="/categories/{{.ID}}" hx-target="#cat-manager-list" hx-swap="innerHTML">
-                  <input type="color" name="color" value="{{.Color}}">
-                  <input type="text" name="name" value="{{.Name}}" required>
-                  <button type="submit" class="btn-icon">&#10003;</button>
-                </form>
-                <button class="btn-icon btn-danger" hx-delete="/categories/{{.ID}}" hx-confirm="Delete '{{.Name}}'?"
-                  hx-target="#cat-manager-list" hx-swap="innerHTML">&#x2715;</button>
-              </div>
-              {{end}}
-            </div>
-            <form hx-post="/categories" hx-target="#cat-manager-list" hx-swap="innerHTML" class="cat-add-form">
-              <input type="color" name="color" value="#166534">
-              <input type="text" name="name" placeholder="New category…" required>
-              <select name="type" class="cat-type-select">
-                <option value="other">Other</option>
-                <option value="plant">Plant</option>
-              </select>
-              <button type="submit" class="btn btn-sm btn-primary">Add</button>
-            </form>
-          </div>
-        </div>
-
-        <!-- Layers dropdown -->
-        <div class="panel-dropdown" id="dd-layers">
-          <button class="panel-btn" onclick="toggleDropdown('dd-layers')">
-            Layers <span class="dd-arrow">▾</span>
-          </button>
-          <div class="dropdown-panel">
-            <div id="layer-manager-list">
-              {{range .Layers}}
-              <div class="cat-row">
-                <form class="cat-edit-form" hx-put="/layers/{{.ID}}" hx-target="#layer-manager-list" hx-swap="innerHTML">
-                  <input type="color" name="color" value="{{.Color}}">
-                  <input type="text" name="name" value="{{.Name}}" required>
-                  <button type="submit" class="btn-icon">&#10003;</button>
-                </form>
-                <button class="btn-icon btn-danger" hx-delete="/layers/{{.ID}}" hx-confirm="Delete '{{.Name}}'?"
-                  hx-target="#layer-manager-list" hx-swap="innerHTML">&#x2715;</button>
-              </div>
-              {{end}}
-            </div>
-            <form hx-post="/layers" hx-target="#layer-manager-list" hx-swap="innerHTML" class="cat-add-form">
-              <input type="color" name="color" value="#0ea5e9">
-              <input type="text" name="name" placeholder="New layer…" required>
-              <button type="submit" class="btn btn-sm btn-primary">Add</button>
-            </form>
-          </div>
-        </div>
+        <button id="btn-categories" class="panel-btn" onclick="toggleSidePanel('categories-panel','btn-categories')">Categories</button>
+        <button id="btn-layers"     class="panel-btn" onclick="toggleSidePanel('layers-panel','btn-layers')">Layers</button>
 
         <!-- Time filter -->
         <div class="panel-date-filter">
@@ -227,6 +172,62 @@
     <!-- Side panel (contextual only) -->
     <div class="side-panel">
 
+      <!-- Categories management panel -->
+      <div id="categories-panel" class="panel-section" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0">Categories</h3>
+          <button class="btn-icon" onclick="toggleSidePanel('categories-panel','btn-categories')">&#x2715;</button>
+        </div>
+        <div id="cat-manager-list">
+          {{range .Categories}}
+          <div class="cat-row">
+            <form class="cat-edit-form" hx-put="/categories/{{.ID}}" hx-target="#cat-manager-list" hx-swap="innerHTML">
+              <input type="color" name="color" value="{{.Color}}">
+              <input type="text" name="name" value="{{.Name}}" required>
+              <button type="submit" class="btn-icon">&#10003;</button>
+            </form>
+            <button class="btn-icon btn-danger" hx-delete="/categories/{{.ID}}" hx-confirm="Delete '{{.Name}}'?"
+              hx-target="#cat-manager-list" hx-swap="innerHTML">&#x2715;</button>
+          </div>
+          {{end}}
+        </div>
+        <form hx-post="/categories" hx-target="#cat-manager-list" hx-swap="innerHTML" class="cat-add-form">
+          <input type="color" name="color" value="#166534">
+          <input type="text" name="name" placeholder="New category…" required>
+          <select name="type" class="cat-type-select">
+            <option value="other">Other</option>
+            <option value="plant">Plant</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-primary">Add</button>
+        </form>
+      </div>
+
+      <!-- Layers management panel -->
+      <div id="layers-panel" class="panel-section" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0">Layers</h3>
+          <button class="btn-icon" onclick="toggleSidePanel('layers-panel','btn-layers')">&#x2715;</button>
+        </div>
+        <div id="layer-manager-list">
+          {{range .Layers}}
+          <div class="cat-row">
+            <form class="cat-edit-form" hx-put="/layers/{{.ID}}" hx-target="#layer-manager-list" hx-swap="innerHTML">
+              <input type="color" name="color" value="{{.Color}}">
+              <input type="text" name="name" value="{{.Name}}" required>
+              <button type="submit" class="btn-icon">&#10003;</button>
+            </form>
+            <button class="btn-icon btn-danger" hx-delete="/layers/{{.ID}}" hx-confirm="Delete '{{.Name}}'?"
+              hx-target="#layer-manager-list" hx-swap="innerHTML">&#x2715;</button>
+          </div>
+          {{end}}
+        </div>
+        <form hx-post="/layers" hx-target="#layer-manager-list" hx-swap="innerHTML" class="cat-add-form">
+          <input type="color" name="color" value="#0ea5e9">
+          <input type="text" name="name" placeholder="New layer…" required>
+          <button type="submit" class="btn btn-sm btn-primary">Add</button>
+        </form>
+      </div>
+
       <!-- New marker form -->
       <div id="marker-create-panel" class="panel-section" style="display:none">
         <h3>New Marker</h3>
@@ -248,7 +249,7 @@
           </div>
           <div class="form-group">
             <label>Layer</label>
-            <select name="layer_id">
+            <select name="layer_id" id="marker-layer">
               <option value="">— none —</option>
               {{range .Layers}}
               <option value="{{.ID}}">{{.Name}}</option>
@@ -437,6 +438,14 @@
   }
 
   // Dropdown panel toggle
+  function toggleSidePanel(panelId, btnId) {
+    const panel  = document.getElementById(panelId);
+    const btn    = document.getElementById(btnId);
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : '';
+    btn.classList.toggle('panel-btn--active', !isOpen);
+  }
+
   function toggleDropdown(id) {
     const dd = document.getElementById(id);
     const isOpen = dd.classList.contains('open');
@@ -456,6 +465,19 @@
     document.getElementById('shape-type').value = shape;
     document.getElementById('shape-coords').value = JSON.stringify(coords);
     document.getElementById('marker-create-panel').style.display = 'block';
+
+    const catSel   = document.getElementById('marker-category');
+    const layerSel = document.getElementById('marker-layer');
+    if (plotCanvas.activeCategories && plotCanvas.activeCategories.size === 1) {
+      const catId = [...plotCanvas.activeCategories][0];
+      catSel.value = catId === 0 ? '' : String(catId);
+      updatePlantedDateVisibility(catSel);
+    }
+    if (plotCanvas.activeLayers && plotCanvas.activeLayers.size === 1) {
+      const layerId = [...plotCanvas.activeLayers][0];
+      layerSel.value = layerId === 0 ? '' : String(layerId);
+    }
+
     document.getElementById('marker-label').focus();
   };
 
@@ -466,6 +488,7 @@
     document.getElementById('marker-create-panel').style.display = 'none';
     document.getElementById('planted-date-group').style.display = 'none';
     document.getElementById('marker-form').reset();
+    updatePlantedDateVisibility(document.getElementById('marker-category'));
     updateMarkerCount();
   });
 
