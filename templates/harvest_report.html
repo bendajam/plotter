@@ -1,0 +1,98 @@
+{{template "layout.html" .}}
+{{define "content"}}
+{{$plot := .Plot}}
+<div class="form-page">
+  <div class="page-header">
+    <h1>Harvest Report — {{$plot.Name}}</h1>
+    <a href="/plots/{{$plot.ID}}" class="btn btn-secondary">← Back to Plot</a>
+  </div>
+
+  {{if and (not .Monthly) (not .Yearly)}}
+  <p class="hint" style="margin-top:24px">No harvests recorded yet.</p>
+  {{else}}
+
+  <div class="harvest-report-tabs">
+    <button class="harvest-tab-btn active" onclick="showReportTab('yearly', this)">By Year</button>
+    <button class="harvest-tab-btn" onclick="showReportTab('monthly', this)">By Month</button>
+  </div>
+
+  <div id="report-yearly" class="harvest-report-view">
+    {{if .Yearly}}
+    {{range .Yearly}}
+    <div class="harvest-report-period">
+      <div class="harvest-report-period-header">
+        <h2 class="harvest-report-period-title">{{.Period}}</h2>
+        <span class="harvest-report-period-total">{{fmtWeight .Total}}</span>
+      </div>
+      <table class="harvest-report-table">
+        <thead>
+          <tr><th>Plant</th><th class="harvest-weight-col">Weight</th></tr>
+        </thead>
+        <tbody>
+          {{range .Labels}}
+          <tr class="harvest-label-row">
+            <td>{{.Label}}</td>
+            <td class="harvest-weight-col">{{fmtWeight .Total}}</td>
+          </tr>
+          {{range .Cultivars}}
+          <tr class="harvest-cultivar-row">
+            <td class="harvest-cultivar-name">↳ {{if .Cultivar}}{{.Cultivar}}{{else}}Unknown cultivar{{end}}</td>
+            <td class="harvest-weight-col">{{fmtWeight .Total}}</td>
+          </tr>
+          {{end}}
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+    {{else}}
+    <p class="hint">No harvest data.</p>
+    {{end}}
+  </div>
+
+  <div id="report-monthly" class="harvest-report-view" style="display:none">
+    {{if .Monthly}}
+    {{range .Monthly}}
+    <div class="harvest-report-period">
+      <div class="harvest-report-period-header">
+        <h2 class="harvest-report-period-title">{{.Period}}</h2>
+        <span class="harvest-report-period-total">{{fmtWeight .Total}}</span>
+      </div>
+      <table class="harvest-report-table">
+        <thead>
+          <tr><th>Plant</th><th class="harvest-weight-col">Weight</th></tr>
+        </thead>
+        <tbody>
+          {{range .Labels}}
+          <tr class="harvest-label-row">
+            <td>{{.Label}}</td>
+            <td class="harvest-weight-col">{{fmtWeight .Total}}</td>
+          </tr>
+          {{range .Cultivars}}
+          <tr class="harvest-cultivar-row">
+            <td class="harvest-cultivar-name">↳ {{if .Cultivar}}{{.Cultivar}}{{else}}Unknown cultivar{{end}}</td>
+            <td class="harvest-weight-col">{{fmtWeight .Total}}</td>
+          </tr>
+          {{end}}
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+    {{else}}
+    <p class="hint">No harvest data.</p>
+    {{end}}
+  </div>
+
+  {{end}}
+</div>
+
+<script>
+  function showReportTab(id, btn) {
+    document.querySelectorAll('.harvest-report-view').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.harvest-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('report-' + id).style.display = '';
+    btn.classList.add('active');
+  }
+</script>
+{{end}}

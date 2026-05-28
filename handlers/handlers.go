@@ -39,7 +39,7 @@ func New(database *db.DB, uploadDir string) (*Handler, error) {
 
 	layout := filepath.Join(tmplDir, "layout.html")
 
-	pages := []string{"index", "plot_new", "plot", "weather", "remap"}
+	pages := []string{"index", "plot_new", "plot", "weather", "remap", "harvest_report"}
 	templates := make(map[string]*template.Template)
 
 	for _, name := range pages {
@@ -153,6 +153,13 @@ func funcMap() template.FuncMap {
 				return fmt.Sprintf("%.2f kg", kg)
 			}
 			return fmt.Sprintf("%.0f g", total)
+		},
+		"fmtWeight": func(grams float64) string {
+			if grams >= 1000 {
+				kg := math.Round(grams/1000*100) / 100
+				return fmt.Sprintf("%.2f kg", kg)
+			}
+			return fmt.Sprintf("%.0f g", grams)
 		},
 	}
 }

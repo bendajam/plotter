@@ -8,6 +8,7 @@
       <p class="address">{{$plot.Address}}</p>
     </div>
     <div class="plot-actions">
+      <a href="/plots/{{$plot.ID}}/harvest-report" class="btn btn-secondary">Harvest Report</a>
       <a href="/plots/{{$plot.ID}}/weather" class="btn btn-secondary">Weather Log</a>
       <a href="/plots/{{$plot.ID}}/remap" class="btn btn-secondary">Update Photo</a>
       <button hx-delete="/plots/{{$plot.ID}}" hx-confirm="Delete this plot and all its data?"

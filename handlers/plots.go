@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -396,4 +397,112 @@ func (h *Handler) DeletePlot(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("HX-Redirect", "/")
 	w.WriteHeader(http.StatusOK)
+}
+
+// ── Harvest report ────────────────────────────────────────────
+
+type harvestCultivar struct {
+	Cultivar string
+	Total    float64
+}
+
+type harvestLabel struct {
+	Label     string
+	Total     float64
+	Cultivars []harvestCultivar // non-nil only when at least one cultivar is named
+}
+
+type harvestPeriod struct {
+	Period string
+	Labels []harvestLabel
+	Total  float64
+}
+
+func buildHarvestPeriods(rows []db.HarvestReportRow, key func(db.HarvestReportRow) string) []harvestPeriod {
+	type lk struct{ period, label string }
+	var periodOrder []string
+	periodSeen := map[string]bool{}
+	labelOrder := map[string][]string{}
+	labelSeen  := map[lk]bool{}
+	totals     := map[lk]map[string]float64{} // [period+label][cultivar] = sum
+
+	for _, r := range rows {
+		p := key(r)
+		if !periodSeen[p] {
+			periodOrder = append(periodOrder, p)
+			periodSeen[p] = true
+		}
+		k := lk{p, r.Label}
+		if !labelSeen[k] {
+			labelOrder[p] = append(labelOrder[p], r.Label)
+			labelSeen[k] = true
+			totals[k] = map[string]float64{}
+		}
+		totals[k][r.Cultivar] += r.Total
+	}
+
+	var periods []harvestPeriod
+	for _, p := range periodOrder {
+		var pTotal float64
+		var labels []harvestLabel
+		for _, label := range labelOrder[p] {
+			k := lk{p, label}
+			cv := totals[k]
+			var labelTotal float64
+			hasCultivar := false
+			for name, v := range cv {
+				labelTotal += v
+				if name != "" {
+					hasCultivar = true
+				}
+			}
+			pTotal += labelTotal
+
+			var cultivars []harvestCultivar
+			if hasCultivar {
+				for name, v := range cv {
+					cultivars = append(cultivars, harvestCultivar{Cultivar: name, Total: v})
+				}
+				sort.Slice(cultivars, func(i, j int) bool {
+					if cultivars[i].Cultivar == "" {
+						return false
+					}
+					if cultivars[j].Cultivar == "" {
+						return true
+					}
+					return cultivars[i].Cultivar < cultivars[j].Cultivar
+				})
+			}
+			labels = append(labels, harvestLabel{Label: label, Total: labelTotal, Cultivars: cultivars})
+		}
+		periods = append(periods, harvestPeriod{Period: p, Labels: labels, Total: pTotal})
+	}
+	return periods
+}
+
+func (h *Handler) HarvestReport(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	plot, err := h.db.GetPlot(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	rows, err := h.db.GetHarvestReport(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	monthly := buildHarvestPeriods(rows, func(r db.HarvestReportRow) string { return r.Month })
+	yearly  := buildHarvestPeriods(rows, func(r db.HarvestReportRow) string { return r.Year })
+
+	h.render(w, r, "harvest_report", map[string]interface{}{
+		"Plot":    plot,
+		"Monthly": monthly,
+		"Yearly":  yearly,
+	})
 }

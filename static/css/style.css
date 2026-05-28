@@ -533,6 +533,59 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 }
 .harvest-notes-input { width: 100%; display: block; margin-bottom: 8px; }
 
+/* Harvest report page */
+.harvest-report-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.harvest-tab-btn {
+  padding: 7px 18px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+  transition: all 0.15s;
+}
+.harvest-tab-btn:hover { border-color: #166534; color: #166534; }
+.harvest-tab-btn.active { border-color: #166534; background: #f0fdf4; color: #166534; }
+.harvest-report-view {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, max-content));
+  gap: 20px;
+  align-items: start;
+  justify-content: start;
+}
+.harvest-report-period {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.harvest-report-period-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+.harvest-report-period-title { font-size: 1rem; font-weight: 700; margin: 0; }
+.harvest-report-period-total { font-size: 0.85rem; color: #166534; font-weight: 600; }
+.harvest-report-table { border-collapse: collapse; font-size: 0.85rem; text-align: left; }
+.harvest-report-table th {
+  padding: 5px 12px 5px 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #e2e8f0;
+}
+.harvest-weight-col { text-align: right; padding-left: 24px; white-space: nowrap; font-weight: 600; color: #166534; }
+.harvest-label-row td { padding: 6px 12px 6px 0; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
+.harvest-cultivar-row td { padding: 3px 12px 3px 14px; border-bottom: 1px solid #f8fafc; font-size: 0.81rem; color: #4b5563; }
+.harvest-cultivar-name { font-style: italic; }
+
 /* Plant group panel */
 .group-sel-list { list-style: none; margin: 6px 0 10px; display: flex; flex-direction: column; gap: 4px; }
 .group-sel-item { font-size: 0.83rem; color: #374151; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 4px 8px; }

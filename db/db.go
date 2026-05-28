@@ -823,6 +823,59 @@ func (d *DB) DeleteHarvest(id int64) (int64, error) {
 	return markerID, err
 }
 
+// ── Harvest report ───────────────────────────────────────────
+
+type HarvestReportRow struct {
+	Month    string  // "2024-03"
+	Year     string  // "2024"
+	Label    string
+	Cultivar string
+	Total    float64
+}
+
+func (d *DB) GetHarvestReport(plotID int64) ([]HarvestReportRow, error) {
+	const q = `
+		SELECT
+			strftime('%Y-%m', h.date),
+			strftime('%Y',    h.date),
+			COALESCE(NULLIF(m.label,''), '(unlabeled)'),
+			COALESCE(t.cultivar, ''),
+			SUM(h.weight_grams)
+		FROM harvests h
+		JOIN markers m ON m.id = h.marker_id
+		LEFT JOIN plant_taxonomy t ON t.marker_id = m.id
+		WHERE m.plot_id = ? AND m.deleted_at IS NULL
+		GROUP BY strftime('%Y-%m', h.date),
+		         COALESCE(NULLIF(m.label,''), '(unlabeled)'),
+		         COALESCE(t.cultivar, '')
+		UNION ALL
+		SELECT
+			strftime('%Y-%m', gh.date),
+			strftime('%Y',    gh.date),
+			pg.name,
+			'',
+			SUM(gh.weight_grams)
+		FROM group_harvests gh
+		JOIN plant_groups pg ON pg.id = gh.group_id
+		WHERE pg.plot_id = ?
+		GROUP BY strftime('%Y-%m', gh.date), pg.id
+		ORDER BY 1 DESC, 3, 4`
+	rows, err := d.Query(q, plotID, plotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []HarvestReportRow
+	for rows.Next() {
+		var r HarvestReportRow
+		if err := rows.Scan(&r.Month, &r.Year, &r.Label, &r.Cultivar, &r.Total); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
 // ── Transplants ───────────────────────────────────────────────
 
 func (d *DB) GetTransplant(id int64) (*Transplant, error) {

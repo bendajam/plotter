@@ -84,6 +84,7 @@ func main() {
 	r.Post("/plant-groups/{id}/harvests", h.CreateGroupHarvest)
 	r.Delete("/group-harvests/{id}", h.DeleteGroupHarvest)
 
+	r.Get("/plots/{id}/harvest-report", h.HarvestReport)
 	r.Get("/plots/{id}/weather", h.ListWeather)
 	r.Post("/plots/{id}/weather", h.CreateWeather)
 	r.Delete("/weather/{id}", h.DeleteWeather)
