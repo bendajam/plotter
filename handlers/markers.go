@@ -428,6 +428,53 @@ func (h *Handler) UpdateMarker(w http.ResponseWriter, r *http.Request) {
 	h.ViewMarker(w, r)
 }
 
+func (h *Handler) UpdateMarkerShape(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var shape, coords string
+	if isJSONBody(r) {
+		var req struct {
+			Shape  string `json:"shape"`
+			Coords string `json:"coords"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		shape = req.Shape
+		coords = req.Coords
+	} else {
+		r.ParseForm()
+		shape = strings.TrimSpace(r.FormValue("shape"))
+		coords = strings.TrimSpace(r.FormValue("coords"))
+	}
+
+	if shape == "" || coords == "" {
+		http.Error(w, "shape and coords required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.db.UpdateMarkerShape(id, shape, coords); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	marker, err := h.db.GetMarker(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"id":     marker.ID,
+		"shape":  marker.Shape,
+		"coords": marker.Coords,
+	})
+}
+
 func (h *Handler) BulkUpdateMarkers(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 

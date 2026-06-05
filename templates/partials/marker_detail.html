@@ -75,7 +75,10 @@
     </form>
   </details>
 
-  <a href="/markers/{{$marker.ID}}" class="btn btn-sm btn-secondary" style="margin:8px 0;display:inline-block">Full Detail →</a>
+  <div style="display:flex;gap:8px;margin:8px 0;align-items:center">
+    <a href="/markers/{{$marker.ID}}" class="btn btn-sm btn-secondary">Full Detail →</a>
+    <button id="edit-shape-btn-{{$marker.ID}}" class="btn btn-sm btn-secondary">Edit Shape</button>
+  </div>
 
   <div class="detail-section">
     <div class="transplant-section-header">

@@ -167,6 +167,10 @@
         <span>Click the new location for <strong class="transplant-label"></strong> (Esc to cancel)</span>
         <button class="btn btn-sm btn-secondary" onclick="cancelTransplant()">Cancel</button>
       </div>
+      <div id="edit-shape-banner" class="transplant-banner" style="display:none">
+        <span>Draw the new shape for <strong class="edit-shape-label"></strong> (Esc to cancel)</span>
+        <button class="btn btn-sm btn-secondary" onclick="cancelShapeEdit()">Cancel</button>
+      </div>
       <p class="canvas-hint">Scroll to zoom · Ctrl+drag to pan · Select: click marker · Shift+click to multi-select &amp; create groups · Path: click points, Enter/✓ to finish, Esc to cancel</p>
     </div>
 
@@ -630,10 +634,55 @@
   });
 
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && window.plotCanvas && plotCanvas.transplantMode) {
-      e.preventDefault();
-      cancelTransplant();
+    if (e.key === 'Escape' && window.plotCanvas) {
+      if (plotCanvas.transplantMode) {
+        e.preventDefault();
+        cancelTransplant();
+      } else if (plotCanvas.editShapeMode) {
+        e.preventDefault();
+        cancelShapeEdit();
+      }
     }
   });
+
+  // ── Edit Shape ────────────────────────────────────────────────
+
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('button[id^="edit-shape-btn-"]');
+    if (!btn) return;
+    const markerId = +btn.id.replace('edit-shape-btn-', '');
+    const m        = plotCanvas.markers.find(m => m.id === markerId);
+    const label    = (m && m.label) ? m.label : 'marker';
+    plotCanvas.startShapeEdit(markerId);
+    document.querySelector('#edit-shape-banner .edit-shape-label').textContent = label;
+    document.getElementById('edit-shape-banner').style.display = '';
+  });
+
+  function cancelShapeEdit() {
+    if (window.plotCanvas) plotCanvas.cancelShapeEdit();
+    document.getElementById('edit-shape-banner').style.display = 'none';
+  }
+
+  window.onShapeEdited = function(markerId, shape, coords) {
+    document.getElementById('edit-shape-banner').style.display = 'none';
+    fetch('/markers/' + markerId + '/shape', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shape: shape, coords: JSON.stringify(coords) }),
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Failed to update shape');
+      return res.json();
+    })
+    .then(function(data) {
+      const parsed = typeof data.coords === 'string' ? JSON.parse(data.coords) : data.coords;
+      plotCanvas.updateMarkerShape(markerId, data.shape, parsed);
+      htmx.ajax('GET', '/markers/' + markerId, { target: '#marker-detail-panel', swap: 'innerHTML' });
+    })
+    .catch(function(err) {
+      alert('Error saving shape: ' + err.message);
+      plotCanvas.cancelShapeEdit();
+    });
+  };
 </script>
 {{end}}

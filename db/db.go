@@ -648,6 +648,11 @@ func (d *DB) UpdateMarker(id int64, label, endDate, plantedDate string, category
 	return err
 }
 
+func (d *DB) UpdateMarkerShape(id int64, shape, coords string) error {
+	_, err := d.Exec(`UPDATE markers SET shape=?, coords=? WHERE id=?`, shape, coords, id)
+	return err
+}
+
 func (d *DB) DeleteMarker(id int64) error {
 	_, err := d.Exec(`UPDATE markers SET deleted_at = CURRENT_TIMESTAMP WHERE id=?`, id)
 	return err

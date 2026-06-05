@@ -64,6 +64,7 @@ func main() {
 	r.Put("/markers/{id}", h.UpdateMarker)
 	r.Post("/markers/{id}/entries", h.CreateEntry)
 	r.Post("/markers/{id}/transplants", h.CreateTransplant)
+	r.Put("/markers/{id}/shape", h.UpdateMarkerShape)
 	r.Delete("/markers/{id}", h.DeleteMarker)
 
 	r.Delete("/entries/{id}", h.DeleteEntry)

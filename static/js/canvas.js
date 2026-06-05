@@ -37,6 +37,10 @@ class PlotCanvas {
     this.transplantMode     = false;
     this.transplantMarkerId = null;
 
+    // Edit shape mode
+    this.editShapeMode     = false;
+    this.editShapeMarkerId = null;
+
     // Hover tracking (for label-on-hover)
     this.hoveredMarkerId = null;
 
@@ -171,8 +175,20 @@ class PlotCanvas {
       return;
     }
     const coords = { points: [...this.pathPoints] };
-    this.pendingShape = { shape: 'path', coords };
     this.pathPoints = [];
+
+    if (this.editShapeMode) {
+      const markerId = this.editShapeMarkerId;
+      this.editShapeMode     = false;
+      this.editShapeMarkerId = null;
+      this._render();
+      if (typeof window.onShapeEdited === 'function') {
+        window.onShapeEdited(markerId, 'path', coords);
+      }
+      return;
+    }
+
+    this.pendingShape = { shape: 'path', coords };
     this._render();
     if (typeof window.onShapeDrawn === 'function') {
       window.onShapeDrawn('path', coords);
@@ -219,6 +235,18 @@ class PlotCanvas {
     if (simplified.length < 3) { this._render(); return; }
 
     const coords = { points: simplified };
+
+    if (this.editShapeMode) {
+      const markerId = this.editShapeMarkerId;
+      this.editShapeMode     = false;
+      this.editShapeMarkerId = null;
+      this._render();
+      if (typeof window.onShapeEdited === 'function') {
+        window.onShapeEdited(markerId, 'area', coords);
+      }
+      return;
+    }
+
     this.pendingShape = { shape: 'area', coords };
     this._render();
     if (typeof window.onShapeDrawn === 'function') {
@@ -238,9 +266,30 @@ class PlotCanvas {
     this.canvas.style.cursor = this.tool === 'select' ? 'pointer' : 'crosshair';
   }
 
+  startShapeEdit(markerId) {
+    this.editShapeMode     = true;
+    this.editShapeMarkerId = markerId;
+  }
+
+  cancelShapeEdit() {
+    this.editShapeMode     = false;
+    this.editShapeMarkerId = null;
+    this.pendingShape      = null;
+    this._render();
+  }
+
   updateMarkerCoords(id, coords) {
     const m = this.markers.find(m => m.id === id);
     if (m) {
+      m.coords = coords;
+      this._render();
+    }
+  }
+
+  updateMarkerShape(id, shape, coords) {
+    const m = this.markers.find(m => m.id === id);
+    if (m) {
+      m.shape  = shape;
       m.coords = coords;
       this._render();
     }
@@ -391,8 +440,8 @@ class PlotCanvas {
 
     if (this.tool === 'select') {
       const pos     = this._getRelPos(e);
-      const sorted  = this._sortedByDist(pos.x, pos.y);
-      const closest = sorted.length > 0 ? sorted[0] : null;
+      const hits    = this._hitsAt(pos.x, pos.y);
+      const closest = hits.length > 0 ? hits[0] : null;
 
       if (e.shiftKey) {
         if (closest) {
@@ -423,12 +472,12 @@ class PlotCanvas {
       // Regular click: leave group mode, clear multi-selection, cycle stack
       if (typeof window.clearGroupMode === 'function') window.clearGroupMode();
       this.selectedMarkerIds.clear();
-      if (sorted.length > 0) {
+      if (hits.length > 0) {
         // If clicking in the same area (same top entity), advance through the stack
-        if (this._stackSorted.length > 0 && sorted[0].id === this._stackSorted[0].id) {
+        if (this._stackSorted.length > 0 && hits[0].id === this._stackSorted[0].id) {
           this._stackIdx = (this._stackIdx + 1) % this._stackSorted.length;
         } else {
-          this._stackSorted = sorted;
+          this._stackSorted = hits;
           this._stackIdx    = 0;
         }
         const chosen = this._stackSorted[this._stackIdx];
@@ -588,6 +637,16 @@ class PlotCanvas {
       }
       default:
         return;
+    }
+
+    if (this.editShapeMode) {
+      const markerId = this.editShapeMarkerId;
+      this.editShapeMode     = false;
+      this.editShapeMarkerId = null;
+      if (typeof window.onShapeEdited === 'function') {
+        window.onShapeEdited(markerId, this.tool, coords);
+      }
+      return;
     }
 
     this.pendingShape = { shape: this.tool, coords };
@@ -968,6 +1027,14 @@ class PlotCanvas {
   _sortedByDist(x, y) {
     return this.markers
       .filter(m => this._isVisible(m))
+      .map(m => ({ m, d: this._markerDist(m, x, y) }))
+      .sort((a, b) => a.d - b.d)
+      .map(({ m }) => m);
+  }
+
+  _hitsAt(x, y) {
+    return this.markers
+      .filter(m => this._isVisible(m) && this._hitMarker(m, x, y))
       .map(m => ({ m, d: this._markerDist(m, x, y) }))
       .sort((a, b) => a.d - b.d)
       .map(({ m }) => m);
