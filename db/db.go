@@ -117,6 +117,16 @@ type Transplant struct {
 	CreatedAt        time.Time `json:"created_at"`
 }
 
+type PlotGeoRef struct {
+	ID         int64   `json:"id"`
+	PlotID     int64   `json:"plot_id"`
+	PointIndex int     `json:"point_index"` // 0–3
+	ImageX     float64 `json:"image_x"`     // normalized [0,1]
+	ImageY     float64 `json:"image_y"`     // normalized [0,1]
+	Lat        float64 `json:"lat"`
+	Lng        float64 `json:"lng"`
+}
+
 type Weather struct {
 	ID           int64     `json:"id"`
 	PlotID       int64     `json:"plot_id"`
@@ -312,6 +322,21 @@ func Init(path string) (*DB, error) {
 			SELECT id, image_path, date('now') FROM plots`)
 		sqldb.Exec(`UPDATE _version SET v = 11`)
 		v = 11
+	}
+
+	if v < 12 {
+		sqldb.Exec(`CREATE TABLE IF NOT EXISTS plot_geo_refs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE,
+			point_index INTEGER NOT NULL CHECK(point_index IN (0,1,2,3)),
+			image_x REAL NOT NULL,
+			image_y REAL NOT NULL,
+			lat REAL NOT NULL,
+			lng REAL NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(plot_id, point_index))`)
+		sqldb.Exec(`UPDATE _version SET v = 12`)
+		v = 12
 	}
 
 	// Idempotent seeds
@@ -1068,4 +1093,46 @@ func (d *DB) DeleteGroupHarvest(id int64) (int64, error) {
 	d.QueryRow(`SELECT group_id FROM group_harvests WHERE id=?`, id).Scan(&groupID)
 	_, err := d.Exec(`DELETE FROM group_harvests WHERE id=?`, id)
 	return groupID, err
+}
+
+// ── Plot Geo Refs ─────────────────────────────────────────────
+
+func (d *DB) GetGeoRefs(plotID int64) ([]PlotGeoRef, error) {
+	rows, err := d.Query(
+		`SELECT id, plot_id, point_index, image_x, image_y, lat, lng
+		 FROM plot_geo_refs WHERE plot_id=? ORDER BY point_index`, plotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []PlotGeoRef
+	for rows.Next() {
+		var r PlotGeoRef
+		rows.Scan(&r.ID, &r.PlotID, &r.PointIndex, &r.ImageX, &r.ImageY, &r.Lat, &r.Lng)
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+func (d *DB) UpsertGeoRef(plotID int64, pointIndex int, imageX, imageY, lat, lng float64) error {
+	_, err := d.Exec(`
+		INSERT INTO plot_geo_refs (plot_id, point_index, image_x, image_y, lat, lng)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(plot_id, point_index) DO UPDATE SET
+			image_x = excluded.image_x,
+			image_y = excluded.image_y,
+			lat     = excluded.lat,
+			lng     = excluded.lng`,
+		plotID, pointIndex, imageX, imageY, lat, lng)
+	return err
+}
+
+func (d *DB) DeleteGeoRef(plotID int64, pointIndex int) error {
+	_, err := d.Exec(`DELETE FROM plot_geo_refs WHERE plot_id=? AND point_index=?`, plotID, pointIndex)
+	return err
+}
+
+func (d *DB) DeleteAllGeoRefs(plotID int64) error {
+	_, err := d.Exec(`DELETE FROM plot_geo_refs WHERE plot_id=?`, plotID)
+	return err
 }
