@@ -1147,7 +1147,7 @@ func TestCreateWeather_BadPlotID(t *testing.T) {
 func TestDeleteWeather_Success(t *testing.T) {
 	h, d := newHandler(t)
 	plotID := mustCreatePlot(t, d)
-	wID, _ := d.CreateWeather(plotID, "2025-07-15", nil, nil, nil, nil, "", "")
+	wID, _ := d.CreateWeather(plotID, "2025-07-15", nil, nil, nil, nil, "", "", nil, nil)
 
 	r := withParam(deleteReq(fmt.Sprintf("/weather/%d", wID)), "id", fmt.Sprint(wID))
 	rr := httptest.NewRecorder()

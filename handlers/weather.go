@@ -81,9 +81,11 @@ func (h *Handler) CreateWeather(w http.ResponseWriter, r *http.Request) {
 	tempLow := parseOptFloat("temp_low_c")
 	windSpeed := parseOptFloat("wind_speed_kmh")
 	windDir := strings.TrimSpace(r.FormValue("wind_dir"))
+	humidityMax := parseOptFloat("humidity_max_pct")
+	humidityMin := parseOptFloat("humidity_min_pct")
 	notes := strings.TrimSpace(r.FormValue("notes"))
 
-	weatherID, err := h.db.CreateWeather(plotID, date, rainfall, tempHigh, tempLow, windSpeed, windDir, notes)
+	weatherID, err := h.db.CreateWeather(plotID, date, rainfall, tempHigh, tempLow, windSpeed, windDir, notes, humidityMax, humidityMin)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

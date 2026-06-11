@@ -463,7 +463,7 @@ func TestWeatherCRUD(t *testing.T) {
 	tempHigh := 28.0
 	tempLow := 15.0
 
-	wID, err := d.CreateWeather(plotID, "2025-07-10", &rainfall, &tempHigh, &tempLow, nil, "NW", "Sunny day")
+	wID, err := d.CreateWeather(plotID, "2025-07-10", &rainfall, &tempHigh, &tempLow, nil, "NW", "Sunny day", nil, nil)
 	if err != nil {
 		t.Fatalf("CreateWeather: %v", err)
 	}

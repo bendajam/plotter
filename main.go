@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -93,6 +95,9 @@ func main() {
 	r.Get("/plots/{id}/harvest-report", h.HarvestReport)
 	r.Get("/plots/{id}/weather", h.ListWeather)
 	r.Post("/plots/{id}/weather", h.CreateWeather)
+	r.Post("/plots/{id}/weather/sync", h.SyncWeather)
+	r.Get("/plots/{id}/weather/current", h.GetCurrentWeather)
+	r.Post("/weather/sync-all", h.SyncAllWeatherHandler)
 	r.Delete("/weather/{id}", h.DeleteWeather)
 
 	r.Get("/categories", h.ListCategories)
@@ -104,6 +109,27 @@ func main() {
 	r.Post("/layers", h.CreateLayer)
 	r.Put("/layers/{id}", h.UpdateLayer)
 	r.Delete("/layers/{id}", h.DeleteLayer)
+
+	// Daily weather scheduler — fires once per day at PLOTTER_WEATHER_SYNC_HOUR (default 2 AM).
+	syncHour := 2
+	if v := os.Getenv("PLOTTER_WEATHER_SYNC_HOUR"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 && n <= 23 {
+			syncHour = n
+		}
+	}
+	go func() {
+		for {
+			now := time.Now()
+			next := time.Date(now.Year(), now.Month(), now.Day(), syncHour, 0, 0, 0, now.Location())
+			if !next.After(now) {
+				next = next.Add(24 * time.Hour)
+			}
+			time.Sleep(time.Until(next))
+			yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+			log.Printf("weather scheduler: syncing %s", yesterday)
+			h.SyncAllPlots(yesterday)
+		}
+	}()
 
 	addr := ":" + port
 	log.Println("Listening on http://localhost" + addr)

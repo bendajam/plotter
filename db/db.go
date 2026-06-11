@@ -128,16 +128,18 @@ type PlotGeoRef struct {
 }
 
 type Weather struct {
-	ID           int64     `json:"id"`
-	PlotID       int64     `json:"plot_id"`
-	Date         string    `json:"date"`
-	RainfallMM   *float64  `json:"rainfall_mm"`
-	TempHighC    *float64  `json:"temp_high_c"`
-	TempLowC     *float64  `json:"temp_low_c"`
-	WindSpeedKMH *float64  `json:"wind_speed_kmh"`
-	WindDir      string    `json:"wind_dir"`
-	Notes        string    `json:"notes"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID             int64     `json:"id"`
+	PlotID         int64     `json:"plot_id"`
+	Date           string    `json:"date"`
+	RainfallMM     *float64  `json:"rainfall_mm"`
+	TempHighC      *float64  `json:"temp_high_c"`
+	TempLowC       *float64  `json:"temp_low_c"`
+	WindSpeedKMH   *float64  `json:"wind_speed_kmh"`
+	WindDir        string    `json:"wind_dir"`
+	HumidityMaxPct *float64  `json:"humidity_max_pct"`
+	HumidityMinPct *float64  `json:"humidity_min_pct"`
+	Notes          string    `json:"notes"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 // ── Init & migrations ─────────────────────────────────────────
@@ -337,6 +339,13 @@ func Init(path string) (*DB, error) {
 			UNIQUE(plot_id, point_index))`)
 		sqldb.Exec(`UPDATE _version SET v = 12`)
 		v = 12
+	}
+
+	if v < 13 {
+		sqldb.Exec(`ALTER TABLE weather ADD COLUMN humidity_max_pct REAL`)
+		sqldb.Exec(`ALTER TABLE weather ADD COLUMN humidity_min_pct REAL`)
+		sqldb.Exec(`UPDATE _version SET v = 13`)
+		v = 13
 	}
 
 	// Idempotent seeds
@@ -955,8 +964,12 @@ func (d *DB) CreateTransplant(markerID int64, oldCoords, newCoords, date, notes 
 
 func (d *DB) GetWeatherRecord(id int64) (*Weather, error) {
 	var w Weather
-	err := d.QueryRow(`SELECT id, plot_id, date, rainfall_mm, temp_high_c, temp_low_c, wind_speed_kmh, wind_dir, notes, created_at FROM weather WHERE id=?`, id).
-		Scan(&w.ID, &w.PlotID, &w.Date, &w.RainfallMM, &w.TempHighC, &w.TempLowC, &w.WindSpeedKMH, &w.WindDir, &w.Notes, &w.CreatedAt)
+	err := d.QueryRow(
+		`SELECT id, plot_id, date, rainfall_mm, temp_high_c, temp_low_c, wind_speed_kmh, wind_dir,
+		        humidity_max_pct, humidity_min_pct, notes, created_at
+		 FROM weather WHERE id=?`, id).
+		Scan(&w.ID, &w.PlotID, &w.Date, &w.RainfallMM, &w.TempHighC, &w.TempLowC, &w.WindSpeedKMH, &w.WindDir,
+			&w.HumidityMaxPct, &w.HumidityMinPct, &w.Notes, &w.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -964,7 +977,10 @@ func (d *DB) GetWeatherRecord(id int64) (*Weather, error) {
 }
 
 func (d *DB) GetWeather(plotID int64) ([]Weather, error) {
-	rows, err := d.Query(`SELECT id, plot_id, date, rainfall_mm, temp_high_c, temp_low_c, wind_speed_kmh, wind_dir, notes, created_at FROM weather WHERE plot_id=? ORDER BY date DESC`, plotID)
+	rows, err := d.Query(
+		`SELECT id, plot_id, date, rainfall_mm, temp_high_c, temp_low_c, wind_speed_kmh, wind_dir,
+		        humidity_max_pct, humidity_min_pct, notes, created_at
+		 FROM weather WHERE plot_id=? ORDER BY date DESC`, plotID)
 	if err != nil {
 		return nil, err
 	}
@@ -972,15 +988,18 @@ func (d *DB) GetWeather(plotID int64) ([]Weather, error) {
 	var out []Weather
 	for rows.Next() {
 		var w Weather
-		rows.Scan(&w.ID, &w.PlotID, &w.Date, &w.RainfallMM, &w.TempHighC, &w.TempLowC, &w.WindSpeedKMH, &w.WindDir, &w.Notes, &w.CreatedAt)
+		rows.Scan(&w.ID, &w.PlotID, &w.Date, &w.RainfallMM, &w.TempHighC, &w.TempLowC, &w.WindSpeedKMH, &w.WindDir,
+			&w.HumidityMaxPct, &w.HumidityMinPct, &w.Notes, &w.CreatedAt)
 		out = append(out, w)
 	}
 	return out, rows.Err()
 }
 
-func (d *DB) CreateWeather(plotID int64, date string, rainfall, tempHigh, tempLow, windSpeed *float64, windDir, notes string) (int64, error) {
-	res, err := d.Exec(`INSERT INTO weather (plot_id, date, rainfall_mm, temp_high_c, temp_low_c, wind_speed_kmh, wind_dir, notes) VALUES (?,?,?,?,?,?,?,?)`,
-		plotID, date, rainfall, tempHigh, tempLow, windSpeed, windDir, notes)
+func (d *DB) CreateWeather(plotID int64, date string, rainfall, tempHigh, tempLow, windSpeed *float64, windDir, notes string, humidityMax, humidityMin *float64) (int64, error) {
+	res, err := d.Exec(
+		`INSERT INTO weather (plot_id, date, rainfall_mm, temp_high_c, temp_low_c, wind_speed_kmh, wind_dir, notes, humidity_max_pct, humidity_min_pct)
+		 VALUES (?,?,?,?,?,?,?,?,?,?)`,
+		plotID, date, rainfall, tempHigh, tempLow, windSpeed, windDir, notes, humidityMax, humidityMin)
 	if err != nil {
 		return 0, err
 	}
@@ -990,6 +1009,12 @@ func (d *DB) CreateWeather(plotID int64, date string, rainfall, tempHigh, tempLo
 func (d *DB) DeleteWeather(id int64) error {
 	_, err := d.Exec(`DELETE FROM weather WHERE id=?`, id)
 	return err
+}
+
+func (d *DB) HasWeatherForDate(plotID int64, date string) (bool, error) {
+	var n int
+	err := d.QueryRow(`SELECT COUNT(*) FROM weather WHERE plot_id=? AND date=?`, plotID, date).Scan(&n)
+	return n > 0, err
 }
 
 // ── Plant Groups ──────────────────────────────────────────────
