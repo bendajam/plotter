@@ -7,6 +7,13 @@
     <a href="/plots/{{$plot.ID}}" class="btn btn-secondary">← Back to Plot</a>
   </div>
 
+  {{if not .HasGeoRefs}}
+  <div class="georef-notice">
+    <span>No location coordinates set — automatic weather sync is disabled for this plot.</span>
+    <a href="/plots/{{$plot.ID}}/location">Set up location →</a>
+  </div>
+  {{end}}
+
   <!-- Add weather form -->
   <section class="section">
     <h2>Add Weather Record</h2>
@@ -39,9 +46,19 @@
           <label>Wind Direction</label>
           <select name="wind_dir">
             <option value="">—</option>
-            <option>N</option><option>NE</option><option>E</option><option>SE</option>
-            <option>S</option><option>SW</option><option>W</option><option>NW</option>
+            <option>N</option><option>NNE</option><option>NE</option><option>ENE</option>
+            <option>E</option><option>ESE</option><option>SE</option><option>SSE</option>
+            <option>S</option><option>SSW</option><option>SW</option><option>WSW</option>
+            <option>W</option><option>WNW</option><option>NW</option><option>NNW</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label>Humidity High (%)</label>
+          <input type="number" name="humidity_max_pct" step="1" min="0" max="100" placeholder="85">
+        </div>
+        <div class="form-group">
+          <label>Humidity Low (%)</label>
+          <input type="number" name="humidity_min_pct" step="1" min="0" max="100" placeholder="45">
         </div>
       </div>
       <div class="form-group">
@@ -73,6 +90,8 @@
       <th>Low °C</th>
       <th>Wind (km/h)</th>
       <th>Dir</th>
+      <th>Humidity High %</th>
+      <th>Humidity Low %</th>
       <th>Notes</th>
       <th></th>
     </tr>
@@ -86,6 +105,8 @@
       <td>{{if .TempLowC}}{{derefF .TempLowC}}{{else}}—{{end}}</td>
       <td>{{if .WindSpeedKMH}}{{derefF .WindSpeedKMH}}{{else}}—{{end}}</td>
       <td>{{if .WindDir}}{{.WindDir}}{{else}}—{{end}}</td>
+      <td>{{if .HumidityMaxPct}}{{derefF .HumidityMaxPct}}{{else}}—{{end}}</td>
+      <td>{{if .HumidityMinPct}}{{derefF .HumidityMinPct}}{{else}}—{{end}}</td>
       <td>{{.Notes}}</td>
       <td>
         <button class="btn-icon btn-danger"

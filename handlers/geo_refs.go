@@ -9,6 +9,33 @@ import (
 	"plotter/db"
 )
 
+// GET /plots/{id}/location — HTML setup page for geo reference points
+func (h *Handler) GeoRefsPage(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	plot, err := h.db.GetPlot(id)
+	if err != nil {
+		http.Error(w, "plot not found", http.StatusNotFound)
+		return
+	}
+	refs, err := h.db.GetGeoRefs(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if refs == nil {
+		refs = []db.PlotGeoRef{}
+	}
+	refsJSON, _ := json.Marshal(refs)
+	h.render(w, r, "geo_refs", map[string]interface{}{
+		"Plot":        plot,
+		"GeoRefsJSON": string(refsJSON),
+	})
+}
+
 // GET /plots/{id}/geo-refs
 func (h *Handler) ListGeoRefs(w http.ResponseWriter, r *http.Request) {
 	plotID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)

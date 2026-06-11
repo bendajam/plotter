@@ -670,6 +670,28 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 .remap-error { margin-top: 10px; padding: 8px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; color: #dc2626; font-size: 0.85rem; }
 @media (max-width: 700px) { .remap-panels { flex-direction: column; } }
 
+/* Geo-refs / location setup page */
+.georef-page { max-width: 1300px; margin: 0 auto; padding: 0 16px 40px; }
+.georef-workspace { display: flex; gap: 20px; align-items: flex-start; margin-top: 4px; }
+.georef-canvas-wrap { flex: 3; min-width: 0; border: 2px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #1e293b; cursor: crosshair; }
+.georef-canvas-wrap canvas { display: block; width: 100%; height: auto; }
+.georef-points { flex: 2; min-width: 260px; display: flex; flex-direction: column; gap: 10px; }
+.georef-slot { background: #fff; border: 2px solid #e2e8f0; border-radius: 8px; padding: 14px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.georef-slot:hover { border-color: #94a3b8; }
+.georef-slot--active { border-color: #eab308; box-shadow: 0 0 0 3px rgba(234,179,8,.2); }
+.georef-slot-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.georef-num { width: 24px; height: 24px; border-radius: 50%; background: #64748b; color: #fff; font-size: .8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.georef-slot--active .georef-num { background: #eab308; }
+.georef-slot-label { font-weight: 600; font-size: .9rem; flex: 1; }
+.georef-slot-badge { font-size: .75rem; padding: 2px 8px; border-radius: 10px; background: #f1f5f9; color: #64748b; white-space: nowrap; }
+.georef-badge--saved { background: #dcfce7; color: #166534; }
+.georef-badge--pending { background: #fef9c3; color: #854d0e; }
+.georef-imgpos { font-size: .78rem; color: #94a3b8; font-family: monospace; margin-bottom: 6px; min-height: 1.1em; }
+.georef-slot-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.georef-notice { padding: 12px 16px; background: #fef9c3; border: 1px solid #fde047; border-radius: 8px; margin-bottom: 20px; font-size: .9rem; color: #713f12; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.georef-notice a { color: #92400e; font-weight: 600; text-decoration: underline; }
+@media (max-width: 860px) { .georef-workspace { flex-direction: column; } .georef-points { width: 100%; } }
+
 /* Photo lightbox */
 .photo-lightbox { padding: 0; border: none; border-radius: 10px; background: transparent; max-width: 90vw; max-height: 90vh; }
 .photo-lightbox::backdrop { background: rgba(0,0,0,0.75); }

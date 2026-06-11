@@ -1,0 +1,278 @@
+{{template "layout.html" .}}
+{{define "content"}}
+{{$plot := .Plot}}
+<div class="georef-page">
+  <div class="page-header">
+    <div>
+      <h1>Location Setup — {{$plot.Name}}</h1>
+      <p class="address">Set 4 GPS reference points to enable automatic weather sync and cardinal direction mapping</p>
+    </div>
+    <a href="/plots/{{$plot.ID}}" class="btn btn-secondary">← Back to Plot</a>
+  </div>
+
+  <div class="section" style="margin-top:20px">
+    <p class="hint" style="margin:0">
+      Select a point slot, click its location on the plot image, then enter the GPS coordinates (or tap <strong>Use GPS</strong> while standing at that spot).
+      Place points near the corners of your plot for best accuracy.
+    </p>
+  </div>
+
+  <div class="georef-workspace">
+
+    <!-- Plot image canvas -->
+    <div class="georef-canvas-wrap">
+      <canvas id="georef-canvas"></canvas>
+    </div>
+
+    <!-- 4 reference point slots -->
+    <div class="georef-points">
+
+      <div class="georef-slot georef-slot--active" id="slot-0" onclick="selectSlot(0)">
+        <div class="georef-slot-header">
+          <span class="georef-num" id="num-0">1</span>
+          <span class="georef-slot-label">Reference Point 1</span>
+          <span class="georef-slot-badge" id="badge-0">Not set</span>
+        </div>
+        <div class="georef-imgpos" id="imgpos-0">Click image to place</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" id="lat-0" step="any" placeholder="37.7749" oninput="onCoordInput(0)">
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" id="lng-0" step="any" placeholder="-122.4194" oninput="onCoordInput(0)">
+          </div>
+        </div>
+        <div class="georef-slot-actions">
+          <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();useGPS(0)">Use GPS</button>
+          <button class="btn btn-sm btn-primary" id="save-0" onclick="event.stopPropagation();savePoint(0)" disabled>Save</button>
+          <button class="btn btn-sm btn-danger" id="del-0" onclick="event.stopPropagation();deletePoint(0)" style="display:none">Remove</button>
+        </div>
+      </div>
+
+      <div class="georef-slot" id="slot-1" onclick="selectSlot(1)">
+        <div class="georef-slot-header">
+          <span class="georef-num" id="num-1">2</span>
+          <span class="georef-slot-label">Reference Point 2</span>
+          <span class="georef-slot-badge" id="badge-1">Not set</span>
+        </div>
+        <div class="georef-imgpos" id="imgpos-1">Click image to place</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" id="lat-1" step="any" placeholder="37.7749" oninput="onCoordInput(1)">
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" id="lng-1" step="any" placeholder="-122.4194" oninput="onCoordInput(1)">
+          </div>
+        </div>
+        <div class="georef-slot-actions">
+          <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();useGPS(1)">Use GPS</button>
+          <button class="btn btn-sm btn-primary" id="save-1" onclick="event.stopPropagation();savePoint(1)" disabled>Save</button>
+          <button class="btn btn-sm btn-danger" id="del-1" onclick="event.stopPropagation();deletePoint(1)" style="display:none">Remove</button>
+        </div>
+      </div>
+
+      <div class="georef-slot" id="slot-2" onclick="selectSlot(2)">
+        <div class="georef-slot-header">
+          <span class="georef-num" id="num-2">3</span>
+          <span class="georef-slot-label">Reference Point 3</span>
+          <span class="georef-slot-badge" id="badge-2">Not set</span>
+        </div>
+        <div class="georef-imgpos" id="imgpos-2">Click image to place</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" id="lat-2" step="any" placeholder="37.7749" oninput="onCoordInput(2)">
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" id="lng-2" step="any" placeholder="-122.4194" oninput="onCoordInput(2)">
+          </div>
+        </div>
+        <div class="georef-slot-actions">
+          <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();useGPS(2)">Use GPS</button>
+          <button class="btn btn-sm btn-primary" id="save-2" onclick="event.stopPropagation();savePoint(2)" disabled>Save</button>
+          <button class="btn btn-sm btn-danger" id="del-2" onclick="event.stopPropagation();deletePoint(2)" style="display:none">Remove</button>
+        </div>
+      </div>
+
+      <div class="georef-slot" id="slot-3" onclick="selectSlot(3)">
+        <div class="georef-slot-header">
+          <span class="georef-num" id="num-3">4</span>
+          <span class="georef-slot-label">Reference Point 4</span>
+          <span class="georef-slot-badge" id="badge-3">Not set</span>
+        </div>
+        <div class="georef-imgpos" id="imgpos-3">Click image to place</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" id="lat-3" step="any" placeholder="37.7749" oninput="onCoordInput(3)">
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" id="lng-3" step="any" placeholder="-122.4194" oninput="onCoordInput(3)">
+          </div>
+        </div>
+        <div class="georef-slot-actions">
+          <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();useGPS(3)">Use GPS</button>
+          <button class="btn btn-sm btn-primary" id="save-3" onclick="event.stopPropagation();savePoint(3)" disabled>Save</button>
+          <button class="btn btn-sm btn-danger" id="del-3" onclick="event.stopPropagation();deletePoint(3)" style="display:none">Remove</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const PLOT_ID   = {{$plot.ID}};
+const IMAGE_URL = "{{$plot.ImageURL}}";
+const EXISTING  = {{.GeoRefsJSON}};
+
+// ── State ────────────────────────────────────────────────────
+const pts = [0,1,2,3].map(i => ({imageX: null, imageY: null, lat: null, lng: null, saved: false}));
+let activeSlot = 0;
+
+// ── Canvas ───────────────────────────────────────────────────
+const canvas = document.getElementById('georef-canvas');
+const ctx    = canvas.getContext('2d');
+const img    = new Image();
+img.src      = IMAGE_URL;
+img.onload   = () => { canvas.width = img.naturalWidth; canvas.height = img.naturalHeight; redraw(); };
+
+function redraw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0);
+  pts.forEach((p, i) => {
+    if (p.imageX === null) return;
+    const x = p.imageX * canvas.width;
+    const y = p.imageY * canvas.height;
+    const color = p.saved ? '#166534' : (i === activeSlot ? '#eab308' : '#64748b');
+    ctx.beginPath();
+    ctx.arc(x, y, 14, 0, Math.PI * 2);
+    ctx.fillStyle = color + 'cc';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(i + 1), x, y);
+  });
+}
+
+canvas.addEventListener('click', e => {
+  const rect   = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  pts[activeSlot].imageX = ((e.clientX - rect.left) * scaleX) / canvas.width;
+  pts[activeSlot].imageY = ((e.clientY - rect.top)  * scaleY) / canvas.height;
+  pts[activeSlot].saved  = false;
+  updateUI(activeSlot);
+  redraw();
+  // Advance to next unplaced slot
+  const next = pts.findIndex((p, i) => i !== activeSlot && p.imageX === null);
+  if (next !== -1) selectSlot(next);
+});
+
+// ── Slot selection ───────────────────────────────────────────
+function selectSlot(i) {
+  activeSlot = i;
+  [0,1,2,3].forEach(j => document.getElementById('slot-' + j).classList.toggle('georef-slot--active', j === i));
+  redraw();
+}
+
+// ── Inputs ───────────────────────────────────────────────────
+function onCoordInput(i) {
+  const lat = parseFloat(document.getElementById('lat-' + i).value);
+  const lng = parseFloat(document.getElementById('lng-' + i).value);
+  if (!isNaN(lat)) pts[i].lat = lat;
+  if (!isNaN(lng)) pts[i].lng = lng;
+  pts[i].saved = false;
+  updateUI(i);
+}
+
+function useGPS(i) {
+  if (!navigator.geolocation) { alert('Geolocation not supported by this browser.'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    pts[i].lat = pos.coords.latitude;
+    pts[i].lng = pos.coords.longitude;
+    document.getElementById('lat-' + i).value = pos.coords.latitude.toFixed(7);
+    document.getElementById('lng-' + i).value = pos.coords.longitude.toFixed(7);
+    pts[i].saved = false;
+    updateUI(i);
+  }, err => alert('GPS error: ' + err.message), {enableHighAccuracy: true});
+}
+
+// ── Save / delete ────────────────────────────────────────────
+async function savePoint(i) {
+  const p = pts[i];
+  const res = await fetch('/plots/' + PLOT_ID + '/geo-refs/' + i, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({image_x: p.imageX, image_y: p.imageY, lat: p.lat, lng: p.lng}),
+  });
+  if (!res.ok) { alert('Save failed: ' + await res.text()); return; }
+  pts[i].saved = true;
+  updateUI(i);
+  redraw();
+}
+
+async function deletePoint(i) {
+  if (!confirm('Remove reference point ' + (i + 1) + '?')) return;
+  const res = await fetch('/plots/' + PLOT_ID + '/geo-refs/' + i, {method: 'DELETE'});
+  if (!res.ok) { alert('Remove failed'); return; }
+  pts[i] = {imageX: null, imageY: null, lat: null, lng: null, saved: false};
+  document.getElementById('lat-' + i).value = '';
+  document.getElementById('lng-' + i).value = '';
+  updateUI(i);
+  redraw();
+}
+
+// ── UI sync ───────────────────────────────────────────────────
+function updateUI(i) {
+  const p       = pts[i];
+  const hasImg  = p.imageX !== null;
+  const hasGPS  = p.lat !== null && p.lng !== null;
+  const canSave = hasImg && hasGPS && !p.saved;
+
+  document.getElementById('save-' + i).disabled = !canSave;
+  document.getElementById('del-'  + i).style.display = p.saved ? '' : 'none';
+
+  const imgpos = document.getElementById('imgpos-' + i);
+  imgpos.textContent = hasImg
+    ? 'x: ' + p.imageX.toFixed(3) + '  y: ' + p.imageY.toFixed(3)
+    : 'Click image to place';
+
+  const badge = document.getElementById('badge-' + i);
+  if (p.saved) {
+    badge.textContent = 'Saved';
+    badge.className   = 'georef-slot-badge georef-badge--saved';
+  } else if (hasImg || hasGPS) {
+    badge.textContent = 'Unsaved';
+    badge.className   = 'georef-slot-badge georef-badge--pending';
+  } else {
+    badge.textContent = 'Not set';
+    badge.className   = 'georef-slot-badge';
+  }
+}
+
+// ── Seed from existing refs ───────────────────────────────────
+EXISTING.forEach(ref => {
+  const i = ref.point_index;
+  pts[i] = {imageX: ref.image_x, imageY: ref.image_y, lat: ref.lat, lng: ref.lng, saved: true};
+  document.getElementById('lat-' + i).value = ref.lat;
+  document.getElementById('lng-' + i).value = ref.lng;
+  updateUI(i);
+});
+
+// Select first unset slot, or 0 if all set
+const firstUnset = pts.findIndex(p => !p.saved);
+selectSlot(firstUnset !== -1 ? firstUnset : 0);
+</script>
+{{end}}

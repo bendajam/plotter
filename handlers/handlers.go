@@ -39,7 +39,7 @@ func New(database *db.DB, uploadDir string) (*Handler, error) {
 
 	layout := filepath.Join(tmplDir, "layout.html")
 
-	pages := []string{"index", "plot_new", "plot", "weather", "remap", "harvest_report"}
+	pages := []string{"index", "plot_new", "plot", "weather", "remap", "harvest_report", "geo_refs"}
 	templates := make(map[string]*template.Template)
 
 	for _, name := range pages {

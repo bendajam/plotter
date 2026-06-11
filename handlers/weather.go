@@ -36,6 +36,12 @@ func (h *Handler) ListWeather(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	refs, err := h.db.GetGeoRefs(plotID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if r.Header.Get("HX-Request") == "true" {
 		h.renderPartial(w, r, "weather_item", map[string]interface{}{
 			"Records": records,
@@ -45,8 +51,9 @@ func (h *Handler) ListWeather(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.render(w, r, "weather", map[string]interface{}{
-		"Plot":    plot,
-		"Records": records,
+		"Plot":       plot,
+		"Records":    records,
+		"HasGeoRefs": len(refs) > 0,
 	})
 }
 

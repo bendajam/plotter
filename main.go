@@ -87,6 +87,7 @@ func main() {
 	r.Post("/plant-groups/{id}/harvests", h.CreateGroupHarvest)
 	r.Delete("/group-harvests/{id}", h.DeleteGroupHarvest)
 
+	r.Get("/plots/{id}/location", h.GeoRefsPage)
 	r.Get("/plots/{id}/geo-refs", h.ListGeoRefs)
 	r.Put("/plots/{id}/geo-refs/{index}", h.UpsertGeoRef)
 	r.Delete("/plots/{id}/geo-refs/{index}", h.DeleteGeoRef)

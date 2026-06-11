@@ -8,6 +8,8 @@
       <th>Low °C</th>
       <th>Wind (km/h)</th>
       <th>Dir</th>
+      <th>Humidity High %</th>
+      <th>Humidity Low %</th>
       <th>Notes</th>
       <th></th>
     </tr>
@@ -21,6 +23,8 @@
       <td>{{if .TempLowC}}{{derefF .TempLowC}}{{else}}—{{end}}</td>
       <td>{{if .WindSpeedKMH}}{{derefF .WindSpeedKMH}}{{else}}—{{end}}</td>
       <td>{{if .WindDir}}{{.WindDir}}{{else}}—{{end}}</td>
+      <td>{{if .HumidityMaxPct}}{{derefF .HumidityMaxPct}}{{else}}—{{end}}</td>
+      <td>{{if .HumidityMinPct}}{{derefF .HumidityMinPct}}{{else}}—{{end}}</td>
       <td>{{.Notes}}</td>
       <td>
         <button class="btn-icon btn-danger"
