@@ -104,6 +104,7 @@
           hx-target="#harvest-list-{{$marker.ID}}"
           hx-swap="outerHTML"
           data-toast="Harvest recorded"
+          hx-on::after-request="if(event.detail.successful) this.reset()"
           class="harvest-form">
       <div class="harvest-form-row">
         <input type="date" name="date" value="{{.Today}}" required>
@@ -148,7 +149,8 @@
               hx-target="#entry-imgs-{{.ID}}"
               hx-swap="innerHTML"
               hx-encoding="multipart/form-data"
-              data-toast="Photo added">
+              data-toast="Photo added"
+              hx-on::after-request="if(event.detail.successful) this.reset()">
           <input type="file" name="images" accept="image/*" multiple>
           <input type="text" name="caption" placeholder="Caption">
           <button type="submit" class="btn btn-sm btn-secondary">+ Photos</button>
@@ -164,6 +166,7 @@
           hx-swap="innerHTML"
           hx-encoding="multipart/form-data"
           data-toast="Note added"
+          hx-on::after-request="if(event.detail.successful) this.reset()"
           class="entry-form">
       <div class="form-group">
         <input type="date" name="date" value="{{.Today}}" required>

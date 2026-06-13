@@ -59,6 +59,7 @@
           hx-target="#group-harvest-list-{{$group.ID}}"
           hx-swap="outerHTML"
           data-toast="Harvest recorded"
+          hx-on::after-request="if(event.detail.successful) this.reset()"
           class="harvest-form">
       <div class="harvest-form-row">
         <input type="date" name="date" value="{{.Today}}" required>
