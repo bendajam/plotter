@@ -20,6 +20,7 @@
     <form hx-post="/plots/{{$plot.ID}}/weather"
           hx-target="#weather-list"
           hx-swap="innerHTML"
+          data-toast="Weather record added"
           class="weather-form">
       <div class="form-row">
         <div class="form-group">

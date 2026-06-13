@@ -19,10 +19,37 @@
     {{block "content" .}}{{end}}
   </main>
 
+  <div id="toast-rack" aria-live="polite"></div>
+
   <dialog id="photo-lightbox" class="photo-lightbox">
     <img id="lightbox-img" src="" alt="">
     <button id="lightbox-close" class="lightbox-close" aria-label="Close">&#x2715;</button>
   </dialog>
+
+  <script>
+    function showToast(msg, type) {
+      type = type || 'success';
+      var rack = document.getElementById('toast-rack');
+      var t = document.createElement('div');
+      t.className = 'toast toast--' + type;
+      t.textContent = msg;
+      rack.appendChild(t);
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() { t.classList.add('toast--show'); });
+      });
+      setTimeout(function() {
+        t.classList.remove('toast--show');
+        setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 250);
+      }, 3000);
+    }
+
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+      if (!evt.detail.successful) return;
+      var el  = evt.detail.elt;
+      var src = el.dataset.toast ? el : el.closest('[data-toast]');
+      if (src) showToast(src.dataset.toast);
+    });
+  </script>
 
   <script>
     (function () {

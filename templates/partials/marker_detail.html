@@ -26,6 +26,7 @@
     <form hx-put="/markers/{{$marker.ID}}"
           hx-target="#marker-detail-panel"
           hx-swap="innerHTML"
+          data-toast="Marker saved"
           class="marker-edit-form">
       <div class="form-group">
         <label>Label</label>
@@ -102,6 +103,7 @@
     <form hx-post="/markers/{{$marker.ID}}/harvests"
           hx-target="#harvest-list-{{$marker.ID}}"
           hx-swap="outerHTML"
+          data-toast="Harvest recorded"
           class="harvest-form">
       <div class="harvest-form-row">
         <input type="date" name="date" value="{{.Today}}" required>
@@ -145,7 +147,8 @@
               hx-post="/entries/{{.ID}}/images"
               hx-target="#entry-imgs-{{.ID}}"
               hx-swap="innerHTML"
-              hx-encoding="multipart/form-data">
+              hx-encoding="multipart/form-data"
+              data-toast="Photo added">
           <input type="file" name="images" accept="image/*" multiple>
           <input type="text" name="caption" placeholder="Caption">
           <button type="submit" class="btn btn-sm btn-secondary">+ Photos</button>
@@ -160,6 +163,7 @@
           hx-target="#detail-entries-{{$marker.ID}}"
           hx-swap="innerHTML"
           hx-encoding="multipart/form-data"
+          data-toast="Note added"
           class="entry-form">
       <div class="form-group">
         <input type="date" name="date" value="{{.Today}}" required>

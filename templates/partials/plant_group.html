@@ -12,6 +12,7 @@
     <form hx-put="/plant-groups/{{$group.ID}}"
           hx-target="#marker-detail-panel"
           hx-swap="innerHTML"
+          data-toast="Group saved"
           class="marker-edit-form">
       <div class="form-group">
         <label>Name</label>
@@ -57,6 +58,7 @@
     <form hx-post="/plant-groups/{{$group.ID}}/harvests"
           hx-target="#group-harvest-list-{{$group.ID}}"
           hx-swap="outerHTML"
+          data-toast="Harvest recorded"
           class="harvest-form">
       <div class="harvest-form-row">
         <input type="date" name="date" value="{{.Today}}" required>

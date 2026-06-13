@@ -187,7 +187,7 @@
         <div id="cat-manager-list">
           {{range .Categories}}
           <div class="cat-row">
-            <form class="cat-edit-form" hx-put="/categories/{{.ID}}" hx-target="#cat-manager-list" hx-swap="innerHTML">
+            <form class="cat-edit-form" hx-put="/categories/{{.ID}}" hx-target="#cat-manager-list" hx-swap="innerHTML" data-toast="Category updated">
               <input type="color" name="color" value="{{.Color}}">
               <input type="text" name="name" value="{{.Name}}" required>
               <button type="submit" class="btn-icon">&#10003;</button>
@@ -197,7 +197,7 @@
           </div>
           {{end}}
         </div>
-        <form hx-post="/categories" hx-target="#cat-manager-list" hx-swap="innerHTML" class="cat-add-form">
+        <form hx-post="/categories" hx-target="#cat-manager-list" hx-swap="innerHTML" data-toast="Category added" class="cat-add-form">
           <input type="color" name="color" value="#166534">
           <input type="text" name="name" placeholder="New category…" required>
           <select name="type" class="cat-type-select">
@@ -217,7 +217,7 @@
         <div id="layer-manager-list">
           {{range .Layers}}
           <div class="cat-row">
-            <form class="cat-edit-form" hx-put="/layers/{{.ID}}" hx-target="#layer-manager-list" hx-swap="innerHTML">
+            <form class="cat-edit-form" hx-put="/layers/{{.ID}}" hx-target="#layer-manager-list" hx-swap="innerHTML" data-toast="Layer updated">
               <input type="color" name="color" value="{{.Color}}">
               <input type="text" name="name" value="{{.Name}}" required>
               <button type="submit" class="btn-icon">&#10003;</button>
@@ -227,7 +227,7 @@
           </div>
           {{end}}
         </div>
-        <form hx-post="/layers" hx-target="#layer-manager-list" hx-swap="innerHTML" class="cat-add-form">
+        <form hx-post="/layers" hx-target="#layer-manager-list" hx-swap="innerHTML" data-toast="Layer added" class="cat-add-form">
           <input type="color" name="color" value="#0ea5e9">
           <input type="text" name="name" placeholder="New layer…" required>
           <button type="submit" class="btn btn-sm btn-primary">Add</button>
@@ -237,7 +237,7 @@
       <!-- New marker form -->
       <div id="marker-create-panel" class="panel-section" style="display:none">
         <h3>New Marker</h3>
-        <form id="marker-form" hx-post="/plots/{{$plot.ID}}/markers" hx-target="#marker-list" hx-swap="beforeend">
+        <form id="marker-form" hx-post="/plots/{{$plot.ID}}/markers" hx-target="#marker-list" hx-swap="beforeend" data-toast="Marker created">
           <input type="hidden" id="shape-type" name="shape" value="">
           <input type="hidden" id="shape-coords" name="coords" value="">
           <div class="form-group">
@@ -286,7 +286,7 @@
       <div id="bulk-edit-panel" class="panel-section" style="display:none">
         <h3>Bulk Edit <span id="bulk-sel-count" class="panel-count"></span></h3>
         <p class="hint" style="margin-bottom:10px">Leave a field blank to keep each marker's existing value.</p>
-        <form hx-post="/markers/bulk" hx-target="#bulk-edit-panel">
+        <form hx-post="/markers/bulk" hx-target="#bulk-edit-panel" data-toast="Markers updated">
           <input type="hidden" id="bulk-marker-ids" name="marker_ids">
           <div class="form-group">
             <label>Category</label>
@@ -330,7 +330,8 @@
         <form hx-post="/plots/{{$plot.ID}}/plant-groups"
               hx-target="#marker-detail-panel"
               hx-swap="innerHTML"
-              hx-on::after-request="clearGroupSelection()">
+              hx-on::after-request="clearGroupSelection()"
+              data-toast="Group created">
           <input type="hidden" id="group-marker-ids" name="marker_ids">
           <div class="form-group">
             <input type="text" name="name" placeholder="Group name (e.g. Tomato Bed)…" required>

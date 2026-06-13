@@ -2,6 +2,7 @@
   <form hx-put="/markers/{{.MarkerID}}/taxonomy"
         hx-target="#taxonomy-{{.MarkerID}}"
         hx-swap="outerHTML"
+        data-toast="Taxonomy saved"
         class="taxonomy-form">
     <div class="taxonomy-grid">
       <div class="form-group">
