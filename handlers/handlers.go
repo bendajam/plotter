@@ -155,11 +155,12 @@ func funcMap() template.FuncMap {
 			return fmt.Sprintf("%.0f g", total)
 		},
 		"fmtWeight": func(grams float64) string {
+			lbs := math.Round(grams/453.59237*100) / 100
 			if grams >= 1000 {
 				kg := math.Round(grams/1000*100) / 100
-				return fmt.Sprintf("%.2f kg", kg)
+				return fmt.Sprintf("%.2f kg - %.2f lb", kg, lbs)
 			}
-			return fmt.Sprintf("%.0f g", grams)
+			return fmt.Sprintf("%.0f g - %.2f lb", grams, lbs)
 		},
 	}
 }
