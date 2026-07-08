@@ -6,11 +6,13 @@ After=network.target
 Type=simple
 User=plotter
 Group=plotter
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 WorkingDirectory=/opt/plotter
 ExecStart=/opt/plotter/plotter
 
 # Environment — override any of these in a drop-in or EnvironmentFile
-Environment=PLOTTER_PORT=8080
+Environment=PLOTTER_PORT=80
 Environment=PLOTTER_DB=/opt/plotter/data/plotter.db
 Environment=PLOTTER_UPLOAD_DIR=/opt/plotter/data/uploads
 
