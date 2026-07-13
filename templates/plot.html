@@ -151,6 +151,10 @@
 
         <button id="btn-categories" class="panel-btn" onclick="toggleSidePanel('categories-panel','btn-categories')">Categories</button>
         <button id="btn-layers"     class="panel-btn" onclick="toggleSidePanel('layers-panel','btn-layers')">Layers</button>
+        <button id="btn-heatmap" class="panel-btn" onclick="toggleHeatmap(this)" title="Show where the most produce was harvested">🔥 Heat Map</button>
+        <span id="heatmap-legend" class="heatmap-legend" style="display:none">
+          <span>Low</span><span class="heatmap-legend-bar"></span><span>High</span>
+        </span>
 
         <!-- Time filter -->
         <div class="panel-date-filter">
@@ -442,6 +446,29 @@
     document.querySelectorAll('#' + panelId + ' input[' + attr + ']').forEach(cb => cb.checked = on);
     if (attr === 'data-cat-id') updateCatFilter();
     else updateLayerFilter();
+  }
+
+  // Heat map toggle — lazy-loads harvest weight data on first use
+  let heatmapLoaded = false;
+  function toggleHeatmap(btn) {
+    const willShow = !plotCanvas.showHeatmap;
+    const legend = document.getElementById('heatmap-legend');
+    if (willShow && !heatmapLoaded) {
+      fetch('/plots/' + PLOT_ID + '/heatmap')
+        .then(res => res.json())
+        .then(points => {
+          heatmapLoaded = true;
+          plotCanvas.setHeatmapData(points);
+          plotCanvas.setHeatmapVisible(true);
+          btn.classList.add('panel-btn--active');
+          legend.style.display = points.length ? '' : 'none';
+        })
+        .catch(err => alert('Failed to load heat map: ' + err.message));
+      return;
+    }
+    plotCanvas.setHeatmapVisible(willShow);
+    btn.classList.toggle('panel-btn--active', willShow);
+    legend.style.display = willShow && plotCanvas.heatmapPoints.length ? '' : 'none';
   }
 
   // Dropdown panel toggle

@@ -94,6 +94,7 @@ func main() {
 	r.Delete("/plots/{id}/geo-refs", h.DeleteAllGeoRefs)
 
 	r.Get("/plots/{id}/harvest-report", h.HarvestReport)
+	r.Get("/plots/{id}/heatmap", h.HeatmapData)
 	r.Get("/plots/{id}/weather", h.ListWeather)
 	r.Post("/plots/{id}/weather", h.CreateWeather)
 	r.Post("/plots/{id}/weather/sync", h.SyncWeather)

@@ -34,6 +34,7 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
   margin-bottom: 24px;
 }
 .page-header h1 { font-size: 1.6rem; }
+.page-header-actions { display: flex; align-items: center; gap: 10px; }
 
 /* Buttons */
 .btn {
@@ -534,6 +535,21 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 .harvest-notes-input { width: 100%; display: block; margin-bottom: 8px; }
 
 /* Harvest report page */
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.heatmap-legend-bar {
+  width: 90px;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #22c55e, #eab308, #dc2626);
+}
+
 .harvest-report-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
 .harvest-tab-btn {
   padding: 7px 18px;

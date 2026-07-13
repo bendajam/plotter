@@ -915,6 +915,101 @@ func (d *DB) GetHarvestReport(plotID int64) ([]HarvestReportRow, error) {
 	return out, rows.Err()
 }
 
+// GetHarvestHeatmap returns the total harvested weight per marker for a plot,
+// used to plot a heat map of where produce was produced. Harvests logged
+// against a plant group are split evenly across that group's active members.
+type HeatmapPoint struct {
+	MarkerID int64
+	Shape    string
+	Coords   string
+	Label    string
+	Total    float64
+}
+
+func (d *DB) GetHarvestHeatmap(plotID int64) ([]HeatmapPoint, error) {
+	totals := map[int64]float64{}
+	meta := map[int64]HeatmapPoint{}
+
+	rows, err := d.Query(`
+		SELECT m.id, m.shape, m.coords, COALESCE(NULLIF(m.label,''), '(unlabeled)'), SUM(h.weight_grams)
+		FROM harvests h
+		JOIN markers m ON m.id = h.marker_id
+		WHERE m.plot_id = ? AND m.deleted_at IS NULL
+		GROUP BY m.id`, plotID)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var p HeatmapPoint
+		if err := rows.Scan(&p.MarkerID, &p.Shape, &p.Coords, &p.Label, &p.Total); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		totals[p.MarkerID] += p.Total
+		meta[p.MarkerID] = p
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	grows, err := d.Query(`
+		SELECT pg.id, SUM(gh.weight_grams)
+		FROM group_harvests gh
+		JOIN plant_groups pg ON pg.id = gh.group_id
+		WHERE pg.plot_id = ?
+		GROUP BY pg.id`, plotID)
+	if err != nil {
+		return nil, err
+	}
+	type groupTotal struct {
+		groupID int64
+		total   float64
+	}
+	var groupTotals []groupTotal
+	for grows.Next() {
+		var g groupTotal
+		if err := grows.Scan(&g.groupID, &g.total); err != nil {
+			grows.Close()
+			return nil, err
+		}
+		groupTotals = append(groupTotals, g)
+	}
+	grows.Close()
+	if err := grows.Err(); err != nil {
+		return nil, err
+	}
+
+	for _, g := range groupTotals {
+		members, err := d.GetGroupMarkers(g.groupID)
+		if err != nil {
+			return nil, err
+		}
+		if len(members) == 0 {
+			continue
+		}
+		share := g.total / float64(len(members))
+		for _, m := range members {
+			totals[m.ID] += share
+			if _, ok := meta[m.ID]; !ok {
+				label := m.Label
+				if label == "" {
+					label = "(unlabeled)"
+				}
+				meta[m.ID] = HeatmapPoint{MarkerID: m.ID, Shape: m.Shape, Coords: m.Coords, Label: label}
+			}
+		}
+	}
+
+	out := make([]HeatmapPoint, 0, len(totals))
+	for id, total := range totals {
+		p := meta[id]
+		p.Total = total
+		out = append(out, p)
+	}
+	return out, nil
+}
+
 // ── Transplants ───────────────────────────────────────────────
 
 func (d *DB) GetTransplant(id int64) (*Transplant, error) {

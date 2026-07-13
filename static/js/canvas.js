@@ -82,9 +82,71 @@ class PlotCanvas {
       plantedDate: m.plantedDate || '',
     })) : [];
 
+    // Heat map overlay (harvest weight by location)
+    this.heatmapPoints = [];  // [{x, y, label, grams}] in normalised coords
+    this.showHeatmap   = false;
+    this._heatCanvas   = null;
+    this._heatDirty    = true;
+
     this.canvas.style.cursor = 'pointer'; // matches default select tool
     this._loadImage(imageUrl);
     this._bindEvents();
+  }
+
+  // ── Heat map ─────────────────────────────────────────────────
+
+  setHeatmapData(points) {
+    this.heatmapPoints = points || [];
+    this._heatDirty = true;
+    this._render();
+  }
+
+  setHeatmapVisible(on) {
+    this.showHeatmap = on;
+    this._render();
+  }
+
+  // Builds (and caches) an offscreen canvas painting each point as a radial
+  // blob. Color is chosen from a warm min→max scale over this.heatmapPoints'
+  // own grams range, so the map always spans the full color range regardless
+  // of absolute weight.
+  _buildHeatCanvas(W, H) {
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const hctx = c.getContext('2d');
+
+    let min = Infinity, max = -Infinity;
+    for (const p of this.heatmapPoints) {
+      if (p.grams < min) min = p.grams;
+      if (p.grams > max) max = p.grams;
+    }
+    const range = max - min;
+    const radius = W * 0.05;
+
+    for (const p of this.heatmapPoints) {
+      const t = range > 0 ? (p.grams - min) / range : 1;
+      const [r, g, b] = heatColor(t);
+      const alpha = 0.35 + 0.55 * t;
+      const cx = p.x * W, cy = p.y * H;
+      const grad = hctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      grad.addColorStop(0, `rgba(${r},${g},${b},${alpha})`);
+      grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      hctx.fillStyle = grad;
+      hctx.beginPath();
+      hctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      hctx.fill();
+    }
+
+    this._heatCanvas = c;
+    this._heatDirty = false;
+  }
+
+  _drawHeatmap(W, H) {
+    if (this._heatDirty || !this._heatCanvas || this._heatCanvas.width !== W || this._heatCanvas.height !== H) {
+      this._buildHeatCanvas(W, H);
+    }
+    this.ctx.drawImage(this._heatCanvas, 0, 0);
   }
 
   // ── Public API ────────────────────────────────────────────────
@@ -671,6 +733,10 @@ class PlotCanvas {
       ctx.drawImage(this.image, 0, 0);
     }
 
+    if (this.showHeatmap && this.heatmapPoints.length) {
+      this._drawHeatmap(W, H);
+    }
+
     for (const m of this.markers) {
       if (!this._isVisible(m)) continue;
       const selected  = this.selectedMarkerIds.has(m.id);
@@ -1090,6 +1156,25 @@ class PlotCanvas {
       window.onZoomChange(Math.round(this.zoom * 100));
     }
   }
+}
+
+// Maps t (0-1, where a point falls between the min and max harvest weight)
+// to a warm yellow→orange→red color, used by the heat map overlay.
+function heatColor(t) {
+  const stops = [
+    [34, 197, 94],   // low  (green)
+    [234, 179, 8],   // mid  (yellow)
+    [220, 38, 38],   // high (red)
+  ];
+  const scaled = Math.max(0, Math.min(1, t)) * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(scaled));
+  const frac = scaled - i;
+  const a = stops[i], b = stops[i + 1];
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * frac),
+    Math.round(a[1] + (b[1] - a[1]) * frac),
+    Math.round(a[2] + (b[2] - a[2]) * frac),
+  ];
 }
 
 function hexToRGBA(hex, alpha) {
