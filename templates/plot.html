@@ -484,11 +484,34 @@
     const dd = document.getElementById(id);
     const isOpen = dd.classList.contains('open');
     closeDropdowns();
-    if (!isOpen) dd.classList.add('open');
+    if (!isOpen) {
+      dd.classList.add('open');
+      positionDropdown(dd);
+    }
   }
 
   function closeDropdowns() {
     document.querySelectorAll('.panel-dropdown').forEach(d => d.classList.remove('open'));
+  }
+
+  // Shifts the panel horizontally (relative to its default left:0 anchor)
+  // so it stays fully within the viewport, however far right its button
+  // sits — keeps it fully reachable on narrow screens.
+  function positionDropdown(dd) {
+    const panel = dd.querySelector('.dropdown-panel');
+    if (!panel) return;
+    panel.style.left = '0';
+    const margin = 16;
+    const btnLeft   = dd.getBoundingClientRect().left;
+    const panelW    = panel.offsetWidth;
+    let shift = 0;
+    if (btnLeft + panelW > window.innerWidth - margin) {
+      shift = (window.innerWidth - margin) - (btnLeft + panelW);
+    }
+    if (btnLeft + shift < margin) {
+      shift = margin - btnLeft;
+    }
+    panel.style.left = shift + 'px';
   }
 
   document.addEventListener('click', function(e) {

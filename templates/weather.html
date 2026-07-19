@@ -82,6 +82,7 @@
 
 {{define "weather-records"}}
 {{if .Records}}
+<div class="table-scroll">
 <table class="weather-table">
   <thead>
     <tr>
@@ -120,6 +121,7 @@
     {{end}}
   </tbody>
 </table>
+</div>
 {{else}}
 <p class="hint">No weather records yet.</p>
 {{end}}

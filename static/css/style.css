@@ -1,6 +1,12 @@
 /* Reset & base */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body {
+  /* Any single misbehaving absolutely-positioned panel shouldn't be able to
+     widen the page and shift the whole layout sideways on small screens. */
+  overflow-x: hidden;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: #f8fafc;
@@ -26,15 +32,24 @@ header {
 }
 main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 
+@media (max-width: 640px) {
+  header { padding: 0 16px; }
+  main { padding: 14px; }
+  .page-header h1 { font-size: 1.3rem; }
+  .plot-header h1 { font-size: 1.25rem; }
+}
+
 /* Page header */
 .page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 24px;
 }
 .page-header h1 { font-size: 1.6rem; }
-.page-header-actions { display: flex; align-items: center; gap: 10px; }
+.page-header-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 
 /* Buttons */
 .btn {
@@ -136,7 +151,7 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 }
 .plot-header h1 { font-size: 1.5rem; }
 .plot-header .address { color: #64748b; font-size: 0.9rem; }
-.plot-actions { display: flex; gap: 8px; }
+.plot-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .workspace {
   display: grid;
@@ -316,12 +331,16 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   padding: 14px;
   min-width: 220px;
+  max-width: calc(100vw - 32px);
   z-index: 200;
 }
 .panel-dropdown.open .dropdown-panel { display: block; }
 
 .markers-dd-panel { min-width: 280px; max-height: 380px; overflow-y: auto; }
 .filters-dd-panel { min-width: 240px; }
+@media (max-width: 420px) {
+  .markers-dd-panel, .filters-dd-panel { min-width: 0; width: calc(100vw - 32px); }
+}
 
 .dd-section-label {
   font-size: 0.74rem;
@@ -524,7 +543,7 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 
 /* Harvest add form */
 .harvest-form { margin-top: 12px; }
-.harvest-form-row { display: flex; gap: 10px; margin-bottom: 8px; }
+.harvest-form-row { display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
 .harvest-form-row input, .harvest-form input[type="text"], .harvest-notes-input {
   flex: 1; min-width: 0; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px;
   font-size: 0.83rem; background: #fff;
@@ -570,6 +589,10 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
   gap: 20px;
   align-items: start;
   justify-content: start;
+}
+@media (max-width: 520px) {
+  .harvest-report-view { grid-template-columns: 1fr; justify-content: stretch; }
+  .harvest-report-period { max-width: 100%; }
 }
 .harvest-report-period {
   background: #fff;
@@ -713,6 +736,14 @@ main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 .toast { background: #1e293b; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: .875rem; font-weight: 500; box-shadow: 0 4px 16px rgba(0,0,0,.25); opacity: 0; transform: translateX(16px); transition: opacity .2s ease, transform .2s ease; pointer-events: auto; border-left: 4px solid #22c55e; max-width: 300px; }
 .toast--show { opacity: 1; transform: translateX(0); }
 .toast--error { border-left-color: #ef4444; }
+@media (max-width: 480px) {
+  #toast-rack { left: 16px; right: 16px; bottom: 16px; }
+  .toast { max-width: none; }
+}
+
+/* Wide tables (e.g. weather log) scroll horizontally within their own box
+   instead of forcing the whole page to shift on narrow screens. */
+.table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* Photo lightbox */
 .photo-lightbox { padding: 0; border: none; border-radius: 10px; background: transparent; max-width: 90vw; max-height: 90vh; }

@@ -122,7 +122,7 @@ class PlotCanvas {
       if (p.grams > max) max = p.grams;
     }
     const range = max - min;
-    const radius = W * 0.05;
+    const radius = W * 0.022;
 
     for (const p of this.heatmapPoints) {
       const t = range > 0 ? (p.grams - min) / range : 1;
@@ -131,6 +131,7 @@ class PlotCanvas {
       const cx = p.x * W, cy = p.y * H;
       const grad = hctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
       grad.addColorStop(0, `rgba(${r},${g},${b},${alpha})`);
+      grad.addColorStop(0.55, `rgba(${r},${g},${b},${alpha})`);
       grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
       hctx.fillStyle = grad;
       hctx.beginPath();
