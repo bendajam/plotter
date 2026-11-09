@@ -9,7 +9,7 @@
       {{range .Harvests}}
       <tr>
         <td>{{.Date}}</td>
-        <td class="harvest-weight">{{printf "%.0f" .WeightGrams}} g</td>
+        <td class="harvest-weight">{{fmtWeight .WeightGrams}}</td>
         <td class="harvest-notes">{{.Notes}}</td>
         <td>
           <button class="btn-icon btn-danger"

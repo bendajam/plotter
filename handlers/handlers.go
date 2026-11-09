@@ -100,6 +100,15 @@ func New(database *db.DB, uploadDir string) (*Handler, error) {
 	return &Handler{db: database, templates: templates, uploadDir: uploadDir}, nil
 }
 
+func formatWeight(grams float64) string {
+	lbs := math.Round(grams/453.59237*100) / 100
+	if grams >= 1000 {
+		kg := math.Round(grams/1000*100) / 100
+		return fmt.Sprintf("%.2f kg - %.2f lb", kg, lbs)
+	}
+	return fmt.Sprintf("%.0f g - %.2f lb", grams, lbs)
+}
+
 func funcMap() template.FuncMap {
 	return template.FuncMap{
 		"deref": func(p *int) int {
@@ -137,31 +146,16 @@ func funcMap() template.FuncMap {
 			for _, h := range harvests {
 				total += h.WeightGrams
 			}
-			if total >= 1000 {
-				kg := math.Round(total/1000*100) / 100
-				return fmt.Sprintf("%.2f kg", kg)
-			}
-			return fmt.Sprintf("%.0f g", total)
+			return formatWeight(total)
 		},
 		"groupHarvestTotal": func(harvests []db.GroupHarvest) string {
 			var total float64
 			for _, h := range harvests {
 				total += h.WeightGrams
 			}
-			if total >= 1000 {
-				kg := math.Round(total/1000*100) / 100
-				return fmt.Sprintf("%.2f kg", kg)
-			}
-			return fmt.Sprintf("%.0f g", total)
+			return formatWeight(total)
 		},
-		"fmtWeight": func(grams float64) string {
-			lbs := math.Round(grams/453.59237*100) / 100
-			if grams >= 1000 {
-				kg := math.Round(grams/1000*100) / 100
-				return fmt.Sprintf("%.2f kg - %.2f lb", kg, lbs)
-			}
-			return fmt.Sprintf("%.0f g - %.2f lb", grams, lbs)
-		},
+		"fmtWeight": formatWeight,
 	}
 }
 

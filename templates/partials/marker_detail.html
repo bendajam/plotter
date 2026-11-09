@@ -99,7 +99,6 @@
 
   <div class="detail-section">
     <h4>Harvest Log</h4>
-    {{template "harvest_list.html" (dict "Harvests" .Harvests "MarkerID" $marker.ID)}}
     <form hx-post="/markers/{{$marker.ID}}/harvests"
           hx-target="#harvest-list-{{$marker.ID}}"
           hx-swap="outerHTML"
@@ -113,6 +112,7 @@
       <input type="text" name="notes" placeholder="Notes (optional)" class="harvest-notes-input">
       <button type="submit" class="btn btn-sm btn-primary">+ Log Harvest</button>
     </form>
+    {{template "harvest_list.html" (dict "Harvests" .Harvests "MarkerID" $marker.ID)}}
   </div>
   {{end}}
 

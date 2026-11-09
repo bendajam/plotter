@@ -54,7 +54,6 @@
 
   <div class="detail-section">
     <h4>Group Harvest Log</h4>
-    {{template "group_harvest_list.html" (dict "Harvests" .Harvests "GroupID" $group.ID)}}
     <form hx-post="/plant-groups/{{$group.ID}}/harvests"
           hx-target="#group-harvest-list-{{$group.ID}}"
           hx-swap="outerHTML"
@@ -68,5 +67,6 @@
       <input type="text" name="notes" placeholder="Notes (optional)" class="harvest-notes-input">
       <button type="submit" class="btn btn-sm btn-primary">+ Log Harvest</button>
     </form>
+    {{template "group_harvest_list.html" (dict "Harvests" .Harvests "GroupID" $group.ID)}}
   </div>
 </div>
